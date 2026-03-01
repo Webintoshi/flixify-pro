@@ -11,7 +11,8 @@ RUN npm ci --only=production
 
 # Copy source code
 COPY src/ ./src/
-COPY .env.production .env
+
+# Note: Environment variables are passed at runtime by Coolify
 
 # Expose port
 EXPOSE 9199
