@@ -213,6 +213,13 @@ function createRoutes({
     '/m3u/health',
     m3uController.healthCheck
   );
+
+  // GET /api/v1/m3u/test-provider - Test M3U provider connectivity (diagnostic)
+  router.get(
+    '/m3u/test-provider',
+    rateLimiters.global,
+    m3uController.testProvider
+  );
   
   // GET /api/v1/m3u/public/raw - Public M3U for frontend (no auth required, CORS enabled)
   // In-memory cache for M3U content

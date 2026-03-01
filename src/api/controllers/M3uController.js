@@ -47,17 +47,69 @@ class M3uController {
   }
 
   async _fetchM3u(url) {
-    const response = await axios.get(url, {
-      timeout: parseInt(process.env.PROXY_TIMEOUT_MS) || 30000,
-      maxRedirects: parseInt(process.env.PROXY_MAX_REDIRECTS) || 5,
-      responseType: 'text',
-      headers: {
-        'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18',
-        'Accept': '*/*'
-      },
-      validateStatus: (status) => status === 200
-    });
-    return response.data;
+    const startTime = Date.now();
+    logger.debug('Fetching M3U from provider', { url: url.substring(0, 50) + '...' });
+    
+    try {
+      const response = await axios.get(url, {
+        timeout: parseInt(process.env.PROXY_TIMEOUT_MS) || 30000,
+        maxRedirects: parseInt(process.env.PROXY_MAX_REDIRECTS) || 5,
+        responseType: 'text',
+        headers: {
+          'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18',
+          'Accept': '*/*'
+        },
+        validateStatus: (status) => status === 200
+      });
+      
+      const duration = Date.now() - startTime;
+      logger.info('M3U fetched successfully from provider', { 
+        duration,
+        contentLength: response.data?.length,
+        url: url.substring(0, 50) + '...'
+      });
+      
+      return response.data;
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      
+      // Detailed error logging
+      if (error.code === 'ECONNABORTED') {
+        logger.error('M3U fetch timeout', { 
+          url: url.substring(0, 50) + '...',
+          timeout: process.env.PROXY_TIMEOUT_MS || 30000,
+          duration
+        });
+        throw new Error(`Timeout after ${duration}ms`);
+      }
+      
+      if (error.code === 'ENOTFOUND') {
+        logger.error('M3U provider DNS lookup failed', { 
+          url: url.substring(0, 50) + '...',
+          hostname: error.hostname
+        });
+        throw new Error('Provider DNS lookup failed');
+      }
+      
+      if (error.response) {
+        logger.error('M3U provider returned error', { 
+          url: url.substring(0, 50) + '...',
+          status: error.response.status,
+          statusText: error.response.statusText,
+          headers: error.response.headers
+        });
+        throw new Error(`Provider returned ${error.response.status}`);
+      }
+      
+      logger.error('M3U fetch failed', { 
+        url: url.substring(0, 50) + '...',
+        error: error.message,
+        code: error.code,
+        duration
+      });
+      
+      throw error;
+    }
   }
 
   /**
@@ -100,10 +152,24 @@ class M3uController {
     try {
       const result = await this._getUserM3U.execute({ code });
       m3uUrl = result.url;
+      
+      if (!m3uUrl) {
+        logger.warn('User has no M3U URL assigned', { code: code.substring(0, 4) + '****' });
+        return res.status(404).json({
+          error: 'Not Found',
+          message: 'No M3U URL assigned to this user. Please contact administrator.',
+          code: 'M3U_NOT_ASSIGNED'
+        });
+      }
+      
       // Store for TS segment proxying
       this._userM3uUrls.set(code, m3uUrl);
+      logger.debug('User M3U URL retrieved', { 
+        code: code.substring(0, 4) + '****',
+        url: m3uUrl.substring(0, 50) + '...'
+      });
     } catch (error) {
-      logger.warn('M3U access denied', { error: error.message });
+      logger.warn('M3U access denied', { error: error.message, code: code.substring(0, 4) + '****' });
       return res.status(403).json({
         error: 'Forbidden',
         message: error.message,
@@ -122,11 +188,37 @@ class M3uController {
         // 5 dakika cache - M3U içeriği genelde sabit
         await this._cacheService.set(cacheKey, m3uContent, 300);
       } catch (error) {
-        logger.error('M3U fetch failed', { error: error.message });
-        return res.status(502).json({
+        logger.error('M3U fetch failed', { 
+          error: error.message,
+          code: code.substring(0, 4) + '****',
+          circuitBreakerState: this._circuitBreaker.opened ? 'OPEN' : 'CLOSED'
+        });
+        
+        // More specific error messages based on error type
+        let errorMessage = 'Failed to fetch M3U from provider';
+        let errorCode = 'M3U_FETCH_ERROR';
+        let statusCode = 502;
+        
+        if (error.message.includes('Timeout')) {
+          errorMessage = 'Provider connection timeout. Provider may be slow or unreachable.';
+          errorCode = 'M3U_PROVIDER_TIMEOUT';
+        } else if (error.message.includes('DNS')) {
+          errorMessage = 'Provider DNS lookup failed. Provider domain may be invalid.';
+          errorCode = 'M3U_PROVIDER_DNS_ERROR';
+        } else if (error.message.includes('Provider returned')) {
+          errorMessage = `Provider returned error: ${error.message}`;
+          errorCode = 'M3U_PROVIDER_ERROR';
+        } else if (this._circuitBreaker.opened) {
+          errorMessage = 'Provider is temporarily unavailable (circuit breaker open). Please try again later.';
+          errorCode = 'M3U_CIRCUIT_BREAKER_OPEN';
+          statusCode = 503;
+        }
+        
+        return res.status(statusCode).json({
           error: 'Bad Gateway',
-          message: 'Failed to fetch M3U from provider',
-          code: 'M3U_FETCH_ERROR'
+          message: errorMessage,
+          code: errorCode,
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
       }
     }
@@ -215,6 +307,79 @@ class M3uController {
           state: this._circuitBreaker.opened ? 'OPEN' : 'CLOSED'
         }
       }
+    });
+  });
+
+  /**
+   * GET /m3u/test-provider - Test M3U provider connectivity
+   * Diagnostic endpoint for troubleshooting 502 errors
+   */
+  testProvider = asyncHandler(async (req, res) => {
+    const testUrl = req.query.url || 'http://sifiriptvdns.com:80/playlist/ZMDNKBkEdd/TcZHZNyps2/m3u_plus';
+    
+    logger.info('Testing M3U provider connectivity', { url: testUrl.substring(0, 50) + '...' });
+    
+    const startTime = Date.now();
+    const diagnostics = {
+      url: testUrl,
+      tests: {}
+    };
+    
+    // Test 1: DNS Resolution
+    try {
+      const dns = require('dns');
+      const { hostname } = new URL(testUrl);
+      await new Promise((resolve, reject) => {
+        dns.lookup(hostname, (err, address) => {
+          if (err) reject(err);
+          else resolve(address);
+        });
+      });
+      diagnostics.tests.dns = { status: 'OK', hostname };
+    } catch (error) {
+      diagnostics.tests.dns = { status: 'FAILED', error: error.message };
+    }
+    
+    // Test 2: HTTP Connection
+    try {
+      const response = await axios.get(testUrl, {
+        timeout: 10000,
+        maxRedirects: 2,
+        headers: {
+          'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18',
+          'Accept': '*/*'
+        }
+      });
+      
+      const duration = Date.now() - startTime;
+      diagnostics.tests.http = {
+        status: 'OK',
+        statusCode: response.status,
+        contentType: response.headers['content-type'],
+        contentLength: response.data?.length,
+        duration: `${duration}ms`,
+        preview: response.data?.substring(0, 200)
+      };
+    } catch (error) {
+      diagnostics.tests.http = {
+        status: 'FAILED',
+        error: error.message,
+        code: error.code,
+        responseStatus: error.response?.status
+      };
+    }
+    
+    // Test 3: Circuit Breaker Status
+    diagnostics.tests.circuitBreaker = {
+      state: this._circuitBreaker.opened ? 'OPEN' : 'CLOSED',
+      stats: this._circuitBreaker.stats
+    };
+    
+    diagnostics.overall = diagnostics.tests.http.status === 'OK' ? 'HEALTHY' : 'DEGRADED';
+    
+    res.json({
+      status: diagnostics.overall === 'HEALTHY' ? 'success' : 'error',
+      data: diagnostics
     });
   });
 }
