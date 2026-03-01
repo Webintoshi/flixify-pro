@@ -25,10 +25,46 @@ function AdminDashboard() {
 
   const loadStats = async () => {
     try {
-      const data = await fetchDashboardStats()
-      setStats(data)
+      const result = await fetchDashboardStats()
+      console.log('[AdminDashboard] API response:', result)
+      
+      // API returns { status: 'success', data: { stats, recentUsers } }
+      // Transform to match frontend expected format
+      const apiData = result.data || result
+      
+      if (apiData.stats) {
+        // Transform backend data to frontend format
+        const transformedStats = {
+          totalUsers: apiData.stats.totalUsers || 0,
+          activeUsers: apiData.stats.activeUsers || 0,
+          expiredUsers: apiData.stats.expiredUsers || 0,
+          pendingUsers: apiData.stats.pendingUsers || 0,
+          suspendedUsers: apiData.stats.suspendedUsers || 0,
+          // Use mock data for fields not yet in backend
+          totalPackages: mockStats.totalPackages,
+          totalPayments: mockStats.totalPayments,
+          pendingPayments: mockStats.pendingPayments,
+          todayRevenue: mockStats.todayRevenue,
+          monthlyRevenue: mockStats.monthlyRevenue,
+          // Transform recent users
+          recentUsers: (apiData.recentUsers || []).map((u, index) => ({
+            id: index + 1,
+            code: u.code || 'UNKNOWN',
+            package: 'Premium', // Default package
+            expiry: u.createdAt ? new Date(new Date(u.createdAt).getTime() + 30*24*60*60*1000).toISOString().split('T')[0] : '2024-12-31',
+            status: u.status || 'pending'
+          })),
+          recentPayments: mockStats.recentPayments
+        }
+        setStats(transformedStats)
+      } else {
+        // Fallback to mock data if API structure unexpected
+        console.warn('[AdminDashboard] Unexpected API structure, using mock data')
+        setStats(mockStats)
+      }
     } catch (error) {
       console.error('Stats load error:', error)
+      setStats(mockStats) // Fallback to mock data on error
     } finally {
       setLoading(false)
     }
