@@ -258,7 +258,7 @@ function PlayerPage() {
         return
       }
       
-      const response = await fetch(`http://localhost:9199/api/v1/m3u/${userCode}.m3u`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/m3u/${userCode}.m3u`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

@@ -77,7 +77,7 @@ function RegisterPage() {
     setError(null);
 
     try {
-      const response = await fetch('http://localhost:9199/api/v1/auth/register-public', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/auth/register-public`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
