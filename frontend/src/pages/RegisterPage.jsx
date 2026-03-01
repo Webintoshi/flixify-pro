@@ -105,10 +105,40 @@ function RegisterPage() {
   };
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(accountCode).then(() => {
+    // Try modern clipboard API first (HTTPS only)
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(accountCode).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }).catch(() => {
+        // Fallback for HTTP
+        fallbackCopy();
+      });
+    } else {
+      // Fallback for HTTP or unsupported browsers
+      fallbackCopy();
+    }
+  };
+
+  const fallbackCopy = () => {
+    // Create temporary textarea
+    const textarea = document.createElement('textarea');
+    textarea.value = accountCode;
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    
+    try {
+      document.execCommand('copy');
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    });
+    } catch (err) {
+      console.error('Copy failed:', err);
+      alert('Kod: ' + accountCode + ' - Lütfen manuel kopyalayın');
+    }
+    
+    document.body.removeChild(textarea);
   };
 
   const downloadCode = () => {
