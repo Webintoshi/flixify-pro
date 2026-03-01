@@ -3,12 +3,13 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
+# Set API URL for build time
+ARG VITE_API_URL=http://qsc4gsw0ksss0ccccksow0os.46.225.183.57.sslip.io/api/v1
+ENV VITE_API_URL=${VITE_API_URL}
+
 # Copy package files
 COPY package*.json ./
 RUN npm ci
-
-# Copy env file explicitly
-COPY .env.production .env.production
 
 # Copy source and build
 COPY . .
