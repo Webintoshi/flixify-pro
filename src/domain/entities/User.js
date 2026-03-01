@@ -203,6 +203,7 @@ class User {
       status: this._status.toString(),
       expiresAt: this._expiresAt?.toISOString() || null,
       adminNotes: this._adminNotes,
+      m3uUrl: this._m3uUrl?.toString() || null,
       createdAt: this._createdAt.toISOString(),
       updatedAt: this._updatedAt.toISOString()
     };

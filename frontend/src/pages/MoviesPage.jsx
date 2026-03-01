@@ -370,16 +370,23 @@ function MoviesPage() {
       setError(null)
 
       // Kullanıcının kendi M3U URL'sini kullan
-      if (!user?.code) {
+      if (!user?.m3uUrl) {
         setLoading(false)
+        setError('M3U URL bulunamadi. Lutfen yonetici ile iletisime gecin.')
         return
       }
       
-      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/m3u/${user.code}.m3u`, {
+      // Direkt M3U URL'sinden cek (backend proxy yerine)
+      const response = await fetch(user.m3uUrl, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18'
         }
       })
+      
+      if (!response.ok) {
+        throw new Error('M3U yuklenemedi')
+      }
+      
       const text = await response.text()
       
       let parsedMovies = parseMoviesFromM3U(text)
@@ -394,10 +401,11 @@ function MoviesPage() {
 
       setLoading(false)
     } catch (err) {
-      setError('Filmler yuklenirken hata olustu')
+      console.error('M3U fetch error:', err)
+      setError('Filmler yuklenirken hata olustu: ' + err.message)
       setLoading(false)
     }
-  }, [user?.code])
+  }, [user?.m3uUrl])
 
   useEffect(() => {
     fetchMovies()
