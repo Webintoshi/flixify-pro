@@ -324,6 +324,293 @@ class AdminController {
       }
     });
   });
+
+  /**
+   * GET /admin/dashboard
+   * Dashboard statistics
+   */
+  getDashboard = asyncHandler(async (req, res) => {
+    const userCounts = await this._userRepository.countByStatus();
+    const expiredUsers = await this._userRepository.findExpired();
+    
+    // Get recent users (last 7 days)
+    const recentUsers = await this._userRepository.findRecent(7);
+
+    res.json({
+      status: 'success',
+      data: {
+        stats: {
+          totalUsers: userCounts.total,
+          activeUsers: userCounts.active,
+          pendingUsers: userCounts.pending,
+          suspendedUsers: userCounts.suspended,
+          expiredUsers: expiredUsers.length,
+          recentSignups: recentUsers.length
+        },
+        recentUsers: recentUsers.map(u => ({
+          code: u.code.toString(),
+          status: u.status.toString(),
+          createdAt: u.createdAt
+        })),
+        timestamp: new Date().toISOString()
+      }
+    });
+  });
+
+  /**
+   * GET /admin/profile
+   * Get current admin profile
+   */
+  getProfile = asyncHandler(async (req, res) => {
+    const admin = await this._adminRepository.findById(req.user.adminId);
+    
+    if (!admin) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Admin not found'
+      });
+    }
+
+    res.json({
+      status: 'success',
+      data: {
+        admin: {
+          id: admin.id,
+          name: admin.name,
+          email: admin.email,
+          role: admin.role,
+          lastLogin: admin.last_login
+        }
+      }
+    });
+  });
+
+  /**
+   * GET /admin/payments
+   * List all payments
+   */
+  getPayments = asyncHandler(async (req, res) => {
+    const { data: payments, error } = await this._adminRepository.getPayments();
+    
+    if (error) throw error;
+
+    res.json({
+      status: 'success',
+      data: { payments }
+    });
+  });
+
+  /**
+   * POST /admin/payments/:id/approve
+   * Approve a payment
+   */
+  approvePayment = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    
+    const result = await this._adminRepository.approvePayment(id, req.user.adminId);
+    
+    logger.info('Payment approved', { paymentId: id, adminId: req.user.adminId });
+
+    res.json({
+      status: 'success',
+      message: 'Payment approved successfully',
+      data: result
+    });
+  });
+
+  /**
+   * POST /admin/payments/:id/reject
+   * Reject a payment
+   */
+  rejectPayment = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { reason } = req.body;
+    
+    const result = await this._adminRepository.rejectPayment(id, req.user.adminId, reason);
+    
+    logger.info('Payment rejected', { paymentId: id, adminId: req.user.adminId, reason });
+
+    res.json({
+      status: 'success',
+      message: 'Payment rejected',
+      data: result
+    });
+  });
+
+  /**
+   * GET /admin/packages
+   * List all packages
+   */
+  getPackages = asyncHandler(async (req, res) => {
+    const { data: packages, error } = await this._adminRepository.getPackages();
+    
+    if (error) throw error;
+
+    res.json({
+      status: 'success',
+      data: { packages }
+    });
+  });
+
+  /**
+   * POST /admin/packages
+   * Create new package
+   */
+  createPackage = asyncHandler(async (req, res) => {
+    const packageData = req.body;
+    
+    const result = await this._adminRepository.createPackage(packageData);
+    
+    logger.info('Package created', { packageId: result.id, name: packageData.name });
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Package created successfully',
+      data: result
+    });
+  });
+
+  /**
+   * PUT /admin/packages/:id
+   * Update package
+   */
+  updatePackage = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const packageData = req.body;
+    
+    const result = await this._adminRepository.updatePackage(id, packageData);
+    
+    logger.info('Package updated', { packageId: id });
+
+    res.json({
+      status: 'success',
+      message: 'Package updated successfully',
+      data: result
+    });
+  });
+
+  /**
+   * DELETE /admin/packages/:id
+   * Delete package
+   */
+  deletePackage = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    
+    await this._adminRepository.deletePackage(id);
+    
+    logger.info('Package deleted', { packageId: id });
+
+    res.json({
+      status: 'success',
+      message: 'Package deleted successfully'
+    });
+  });
+
+  /**
+   * GET /admin/admins
+   * List all admins
+   */
+  getAdmins = asyncHandler(async (req, res) => {
+    const { data: admins, error } = await this._adminRepository.getAdmins();
+    
+    if (error) throw error;
+
+    // Don't expose password hashes
+    const safeAdmins = admins.map(a => ({
+      id: a.id,
+      name: a.name,
+      email: a.email,
+      role: a.role,
+      lastLogin: a.last_login,
+      createdAt: a.created_at
+    }));
+
+    res.json({
+      status: 'success',
+      data: { admins: safeAdmins }
+    });
+  });
+
+  /**
+   * POST /admin/admins
+   * Create new admin
+   */
+  createAdmin = asyncHandler(async (req, res) => {
+    const adminData = req.body;
+    
+    // Hash password
+    const bcrypt = require('bcryptjs');
+    const hashedPassword = await bcrypt.hash(adminData.password, 10);
+    
+    const result = await this._adminRepository.createAdmin({
+      ...adminData,
+      password: hashedPassword
+    });
+    
+    logger.info('Admin created', { adminId: result.id, email: adminData.email });
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Admin created successfully',
+      data: {
+        id: result.id,
+        name: result.name,
+        email: result.email,
+        role: result.role
+      }
+    });
+  });
+
+  /**
+   * DELETE /admin/admins/:id
+   * Delete admin
+   */
+  deleteAdmin = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    
+    // Prevent deleting yourself
+    if (id === req.user.adminId) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Cannot delete your own account'
+      });
+    }
+    
+    await this._adminRepository.deleteAdmin(id);
+    
+    logger.info('Admin deleted', { adminId: id, deletedBy: req.user.adminId });
+
+    res.json({
+      status: 'success',
+      message: 'Admin deleted successfully'
+    });
+  });
+
+  /**
+   * GET /admin/analytics
+   * Get analytics data
+   */
+  getAnalytics = asyncHandler(async (req, res) => {
+    const userCounts = await this._userRepository.countByStatus();
+    const expiredUsers = await this._userRepository.findExpired();
+    
+    // Get daily stats for last 30 days
+    const dailyStats = await this._adminRepository.getDailyStats(30);
+
+    res.json({
+      status: 'success',
+      data: {
+        overview: {
+          totalUsers: userCounts.total,
+          activeUsers: userCounts.active,
+          growthRate: 0, // Calculate if needed
+          expirationRate: userCounts.active > 0 ? (expiredUsers.length / userCounts.active) : 0
+        },
+        dailyStats,
+        timestamp: new Date().toISOString()
+      }
+    });
+  });
 }
 
 module.exports = AdminController;

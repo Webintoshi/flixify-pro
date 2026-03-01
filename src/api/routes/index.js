@@ -196,6 +196,110 @@ function createRoutes({
     adminController.getStats
   );
 
+  // GET /api/v1/admin/dashboard - Dashboard stats
+  router.get(
+    '/admin/dashboard',
+    rateLimiters.admin,
+    authMiddleware,
+    adminController.getDashboard
+  );
+
+  // GET /api/v1/admin/profile - Current admin profile
+  router.get(
+    '/admin/profile',
+    rateLimiters.admin,
+    authMiddleware,
+    adminController.getProfile
+  );
+
+  // GET /api/v1/admin/payments - List payments
+  router.get(
+    '/admin/payments',
+    rateLimiters.admin,
+    authMiddleware,
+    adminController.getPayments
+  );
+
+  // POST /api/v1/admin/payments/:id/approve - Approve payment
+  router.post(
+    '/admin/payments/:id/approve',
+    rateLimiters.admin,
+    authMiddleware,
+    adminController.approvePayment
+  );
+
+  // POST /api/v1/admin/payments/:id/reject - Reject payment
+  router.post(
+    '/admin/payments/:id/reject',
+    rateLimiters.admin,
+    authMiddleware,
+    adminController.rejectPayment
+  );
+
+  // GET /api/v1/admin/packages - List packages
+  router.get(
+    '/admin/packages',
+    rateLimiters.admin,
+    authMiddleware,
+    adminController.getPackages
+  );
+
+  // POST /api/v1/admin/packages - Create package
+  router.post(
+    '/admin/packages',
+    rateLimiters.admin,
+    authMiddleware,
+    adminController.createPackage
+  );
+
+  // PUT /api/v1/admin/packages/:id - Update package
+  router.put(
+    '/admin/packages/:id',
+    rateLimiters.admin,
+    authMiddleware,
+    adminController.updatePackage
+  );
+
+  // DELETE /api/v1/admin/packages/:id - Delete package
+  router.delete(
+    '/admin/packages/:id',
+    rateLimiters.admin,
+    authMiddleware,
+    adminController.deletePackage
+  );
+
+  // GET /api/v1/admin/admins - List admins
+  router.get(
+    '/admin/admins',
+    rateLimiters.admin,
+    authMiddleware,
+    adminController.getAdmins
+  );
+
+  // POST /api/v1/admin/admins - Create admin
+  router.post(
+    '/admin/admins',
+    rateLimiters.admin,
+    authMiddleware,
+    adminController.createAdmin
+  );
+
+  // DELETE /api/v1/admin/admins/:id - Delete admin
+  router.delete(
+    '/admin/admins/:id',
+    rateLimiters.admin,
+    authMiddleware,
+    adminController.deleteAdmin
+  );
+
+  // GET /api/v1/admin/analytics - Get analytics
+  router.get(
+    '/admin/analytics',
+    rateLimiters.admin,
+    authMiddleware,
+    adminController.getAnalytics
+  );
+
   // =============================================================================
   // M3U PROXY ROUTES
   // =============================================================================

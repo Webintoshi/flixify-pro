@@ -266,6 +266,26 @@ class SupabaseUserRepository extends UserRepository {
       throw new Error(`Failed to count users by status: ${error.message}`);
     }
   }
+
+  async findRecent(days = 7) {
+    try {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - days);
+      
+      const { data, error } = await this._supabase
+        .from(this._table)
+        .select('*')
+        .gte('created_at', cutoffDate.toISOString())
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return data.map(row => this._toDomain(row));
+    } catch (error) {
+      logger.error('Database error in findRecent', { error: error.message, days });
+      return [];
+    }
+  }
 }
 
 module.exports = SupabaseUserRepository;
