@@ -8,6 +8,62 @@ const express = require('express');
 const router = express.Router();
 const logger = require('../../config/logger');
 
+// Rate limit key cleanup endpoint
+// Usage: GET /dev/clear-rate-limit?ip=xxx.xxx.xxx.xxx&prefix=rl:auth:
+router.get('/clear-rate-limit', async (req, res) => {
+  try {
+    const { ip, prefix = 'rl:auth:' } = req.query;
+    
+    if (!ip) {
+      return res.status(400).json({ 
+        error: 'IP parameter required',
+        usage: '/dev/clear-rate-limit?ip=xxx.xxx.xxx.xxx&prefix=rl:auth:'
+      });
+    }
+    
+    // Try to get Redis client from app locals
+    const redisClient = req.app.locals.redisClient;
+    
+    if (!redisClient) {
+      return res.json({ 
+        message: 'No Redis client available. Rate limits are in-memory and will clear on restart.',
+        ip,
+        prefix
+      });
+    }
+    
+    // Find and delete rate limit keys for this IP
+    const pattern = `${prefix}*`;
+    const keys = await redisClient.keys(pattern);
+    const matchingKeys = keys.filter(k => k.includes(ip));
+    
+    if (matchingKeys.length === 0) {
+      return res.json({ 
+        message: 'No rate limit keys found for this IP',
+        ip,
+        pattern,
+        allKeys: keys.slice(0, 10) // Show first 10 keys for debugging
+      });
+    }
+    
+    // Delete matching keys
+    for (const key of matchingKeys) {
+      await redisClient.del(key);
+      logger.info('Rate limit key cleared', { key, ip });
+    }
+    
+    res.json({
+      message: 'Rate limit keys cleared successfully',
+      ip,
+      clearedKeys: matchingKeys,
+      remainingKeys: keys.length - matchingKeys.length
+    });
+  } catch (error) {
+    logger.error('Clear rate limit error', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Auto-create test user with real M3U
 developmentRoutes = (userRepository, activateUser) => {
   

@@ -124,6 +124,19 @@ function createRateLimiters(redisClient) {
       keyPrefix: 'rl:admin:',
       message: 'Too many admin operations. Please slow down.',
       redisClient
+    }),
+
+    /**
+     * Admin authentication rate limiter
+     * 10 attempts per 5 minutes per IP
+     * More lenient than auth limiter for admin access
+     */
+    adminAuth: createRateLimiter({
+      windowMs: 5 * 60 * 1000, // 5 minutes
+      max: 10,
+      keyPrefix: 'rl:admin:auth:',
+      message: 'Too many login attempts. Please try again in 5 minutes.',
+      redisClient
     })
   };
 }

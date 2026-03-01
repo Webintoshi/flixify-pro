@@ -31,8 +31,17 @@ class AdminController {
    */
   login = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
+    const clientIp = req.ip || req.connection.remoteAddress || 'unknown';
+
+    logger.debug('Admin login attempt', { 
+      email: email?.toLowerCase(),
+      ip: clientIp,
+      path: req.path,
+      method: req.method
+    });
 
     if (!email || !password) {
+      logger.warn('Admin login missing credentials', { email: !!email, password: !!password });
       return res.status(400).json({
         status: 'error',
         message: 'Email and password are required'
@@ -43,6 +52,10 @@ class AdminController {
     const admin = await this._adminRepository.findByEmail(email);
 
     if (!admin) {
+      logger.warn('Admin login failed - email not found', { 
+        email: email?.toLowerCase(),
+        ip: clientIp
+      });
       return res.status(401).json({
         status: 'error',
         message: 'Invalid credentials'
@@ -54,11 +67,22 @@ class AdminController {
     const isValidPassword = await bcrypt.compare(password, admin.password_hash);
 
     if (!isValidPassword) {
+      logger.warn('Admin login failed - invalid password', { 
+        email: email?.toLowerCase(),
+        adminId: admin.id,
+        ip: clientIp
+      });
       return res.status(401).json({
         status: 'error',
         message: 'Invalid credentials'
       });
     }
+
+    logger.info('Admin login successful', { 
+      email: admin.email,
+      adminId: admin.id,
+      ip: clientIp
+    });
 
     // Update last login
     await this._adminRepository.updateLastLogin(admin.id);

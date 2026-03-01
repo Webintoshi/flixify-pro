@@ -167,6 +167,9 @@ async function startServer() {
   // Trust proxy (for X-Forwarded-For behind reverse proxy)
   app.set('trust proxy', 1);
 
+  // Store Redis client in app locals for access in routes
+  app.locals.redisClient = redisClient;
+
   // Security middleware
   app.use(helmet({
     contentSecurityPolicy: {

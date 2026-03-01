@@ -130,7 +130,7 @@ function createRoutes({
   // POST /api/v1/admin/login - Admin login
   router.post(
     '/admin/login',
-    rateLimiters.auth,
+    rateLimiters.adminAuth,  // Dedicated admin auth limiter (10/5min)
     adminController.login
   );
   
