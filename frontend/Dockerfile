@@ -28,3 +28,4 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]
+# Build cache reset - Mon Mar  2 00:07:32 +03 2026
