@@ -169,7 +169,7 @@ function PlayerPage() {
   
   // Fetch channels when in live mode and user is available
   useEffect(() => {
-    if (videoMode === 'live' && user?.code) {
+    if (videoMode === 'live' && user?.m3uUrl) {
       // Önce cache kontrolü
       const cached = M3UCache.get(user.code)
       if (cached) {
@@ -185,7 +185,7 @@ function PlayerPage() {
         fetchChannels()
       }
     }
-  }, [videoMode, user?.code, token])
+  }, [videoMode, user?.m3uUrl, user?.code])
 
   // Video Player (Movie/Series)
   useEffect(() => {
@@ -330,11 +330,10 @@ function PlayerPage() {
   // silent = true: Arka plan yenilemesi, loading UI gösterme
   const fetchChannels = async (silent = false) => {
     try {
-      // Kullanıcinin kodunu kontrol et
-      const userCode = user?.code
-      if (!userCode) {
+      // Kullanıcinin M3U URL'sini kontrol et
+      if (!user?.m3uUrl) {
         if (!silent) {
-          setError('Kullanıcı bilgisi bulunamadı. Lütfen tekrar giriş yapın.')
+          setError('M3U URL bulunamadı. Lütfen yönetici ile iletişime geçin.')
           setLoading(false)
         }
         return
@@ -342,29 +341,22 @@ function PlayerPage() {
       
       if (!silent) setLoading(true)
       
-      // Backend proxy üzerinden M3U çek (CORS sorununu önler)
-      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/m3u/${userCode}.m3u`, {
+      // Direkt M3U URL'sinden çek (backend proxy yerine)
+      const response = await fetch(user.m3uUrl, {
         headers: {
-          'Authorization': `Bearer ${token || ''}`,
           'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18'
         }
       })
       
       if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('M3U playlist bulunamadı. Lütfen yönetici ile iletişime geçin.')
-        } else if (response.status === 403) {
-          throw new Error('Erişim reddedildi. Hesabınız aktif olmayabilir.')
-        } else {
-          throw new Error(`M3U erişim hatası: ${response.status}`)
-        }
+        throw new Error(`M3U erişim hatası: ${response.status}`)
       }
       
       const text = await response.text()
       const parsed = parseM3U(text)
       
       // Cache'e kaydet
-      M3UCache.set(userCode, parsed)
+      M3UCache.set(user.code, parsed)
       
       setChannels(parsed)
       if (parsed.length > 0 && (!currentChannel || !silent)) {
