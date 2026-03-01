@@ -111,14 +111,16 @@ class M3uController {
       });
     }
 
-    // Check cache
+    // Check cache (300s = 5 dakika - frontend ile senkronize)
     const cacheKey = `m3u:content:${code}`;
     let m3uContent = await this._cacheService.get(cacheKey);
+    let cacheHit = !!m3uContent;
 
     if (!m3uContent) {
       try {
         m3uContent = await this._circuitBreaker.fire(m3uUrl);
-        await this._cacheService.set(cacheKey, m3uContent, 60);
+        // 5 dakika cache - M3U içeriği genelde sabit
+        await this._cacheService.set(cacheKey, m3uContent, 300);
       } catch (error) {
         logger.error('M3U fetch failed', { error: error.message });
         return res.status(502).json({
@@ -129,14 +131,18 @@ class M3uController {
       }
     }
 
-    // For VLC/External players: return original content
-    // For Browser: would need CORS proxy (too slow for TS streams)
     const duration = Date.now() - startTime;
-    logger.info('M3U served', { codeMasked: code.substring(0, 4) + '****', duration });
+    logger.info('M3U served', { 
+      codeMasked: code.substring(0, 4) + '****', 
+      duration,
+      cache: cacheHit ? 'HIT' : 'MISS'
+    });
 
     res.set({
       'Content-Type': 'application/x-mpegURL',
-      'Cache-Control': 'private, max-age=30',
+      // Browser cache: 5 dakika (frontend session cache ile uyumlu)
+      'Cache-Control': 'private, max-age=300',
+      'X-Cache': cacheHit ? 'HIT' : 'MISS',
       'X-Response-Time': `${duration}ms`
     });
 

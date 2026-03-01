@@ -4,7 +4,7 @@ import { useAuthStore } from '../stores/authStore'
 import { 
   Play, Pause, Volume2, VolumeX, Maximize, Search,
   Tv, X, ArrowLeft, SkipBack, SkipForward, AlertCircle,
-  Volume1, Volume, Loader2, Radio, Sparkles
+  Volume1, Volume, Loader2, Radio, Sparkles, RefreshCw
 } from 'lucide-react'
 import mpegts from 'mpegts.js'
 
@@ -27,6 +27,62 @@ function useDebounce(value, delay) {
   }, [value, delay])
   
   return debouncedValue
+}
+
+// M3U Cache Manager - sessionStorage ile sayfa oturumu boyunca cache
+class M3UCache {
+  static CACHE_KEY = 'iptv_m3u_cache'
+  static TTL_MS = 5 * 60 * 1000 // 5 dakika
+
+  static get(userCode) {
+    try {
+      const cached = sessionStorage.getItem(`${this.CACHE_KEY}_${userCode}`)
+      if (!cached) return null
+      
+      const { data, timestamp } = JSON.parse(cached)
+      const age = Date.now() - timestamp
+      
+      // Cache süresi dolmuşsa temizle
+      if (age > this.TTL_MS) {
+        sessionStorage.removeItem(`${this.CACHE_KEY}_${userCode}`)
+        return null
+      }
+      
+      return { data, age }
+    } catch {
+      return null
+    }
+  }
+
+  static set(userCode, channels) {
+    try {
+      const cacheData = {
+        data: channels,
+        timestamp: Date.now()
+      }
+      sessionStorage.setItem(`${this.CACHE_KEY}_${userCode}`, JSON.stringify(cacheData))
+    } catch (error) {
+      console.warn('M3U cache write failed:', error)
+    }
+  }
+
+  static clear(userCode) {
+    try {
+      sessionStorage.removeItem(`${this.CACHE_KEY}_${userCode}`)
+    } catch {
+      // ignore
+    }
+  }
+
+  static clearAll() {
+    try {
+      Object.keys(sessionStorage)
+        .filter(key => key.startsWith(this.CACHE_KEY))
+        .forEach(key => sessionStorage.removeItem(key))
+    } catch {
+      // ignore
+    }
+  }
 }
 
 // Ulkeler - Bayraklar ile
@@ -108,9 +164,28 @@ function PlayerPage() {
       setLoading(false)
     } else {
       setVideoMode('live')
-      fetchChannels()
     }
   }, [type, videoUrl])
+  
+  // Fetch channels when in live mode and user is available
+  useEffect(() => {
+    if (videoMode === 'live' && user?.code) {
+      // Önce cache kontrolü
+      const cached = M3UCache.get(user.code)
+      if (cached) {
+        console.log(`[M3U Cache] Using cached data (${Math.round(cached.age / 1000)}s old)`)
+        setChannels(cached.data)
+        if (cached.data.length > 0 && !currentChannel) {
+          setCurrentChannel(cached.data[0])
+        }
+        setLoading(false)
+        // Arka planda yenile (stale-while-revalidate pattern)
+        fetchChannels(true)
+      } else {
+        fetchChannels()
+      }
+    }
+  }, [videoMode, user?.code, token])
 
   // Video Player (Movie/Series)
   useEffect(() => {
@@ -252,35 +327,57 @@ function PlayerPage() {
   }
 
   // Live TV
-  const fetchChannels = async () => {
+  // silent = true: Arka plan yenilemesi, loading UI gösterme
+  const fetchChannels = async (silent = false) => {
     try {
-      // Kullanıcinin kendi M3U URL'sini kullan
-      if (!user?.m3uUrl) {
-        setError('M3U URL bulunamadi. Lutfen yonetici ile iletisime gecin.')
-        setLoading(false)
+      // Kullanıcinin kodunu kontrol et
+      const userCode = user?.code
+      if (!userCode) {
+        if (!silent) {
+          setError('Kullanıcı bilgisi bulunamadı. Lütfen tekrar giriş yapın.')
+          setLoading(false)
+        }
         return
       }
       
-      // Direkt M3U URL'sinden cek (backend proxy yerine)
-      const response = await fetch(user.m3uUrl, {
+      if (!silent) setLoading(true)
+      
+      // Backend proxy üzerinden M3U çek (CORS sorununu önler)
+      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/m3u/${userCode}.m3u`, {
         headers: {
+          'Authorization': `Bearer ${token || ''}`,
           'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18'
         }
       })
       
       if (!response.ok) {
-        throw new Error('M3U erişim hatası')
+        if (response.status === 404) {
+          throw new Error('M3U playlist bulunamadı. Lütfen yönetici ile iletişime geçin.')
+        } else if (response.status === 403) {
+          throw new Error('Erişim reddedildi. Hesabınız aktif olmayabilir.')
+        } else {
+          throw new Error(`M3U erişim hatası: ${response.status}`)
+        }
       }
       
       const text = await response.text()
       const parsed = parseM3U(text)
+      
+      // Cache'e kaydet
+      M3UCache.set(userCode, parsed)
+      
       setChannels(parsed)
-      if (parsed.length > 0) setCurrentChannel(parsed[0])
-      setLoading(false)
+      if (parsed.length > 0 && (!currentChannel || !silent)) {
+        setCurrentChannel(parsed[0])
+      }
+      
+      if (!silent) setLoading(false)
     } catch (err) {
       console.error('M3U fetch error:', err)
-      setError('Kanallar yuklenemedi: ' + err.message)
-      setLoading(false)
+      if (!silent) {
+        setError('Kanallar yüklenemedi: ' + err.message)
+        setLoading(false)
+      }
     }
   }
 
@@ -468,25 +565,42 @@ function PlayerPage() {
       }
 
       try {
+        // ⚠️ LOW LATENCY MODE - Gecikmeyi minimize et
         playerRef.current = mpegts.createPlayer({
           type: 'mpegts',
           url: streamUrl,
           isLive: true,
-          enableWorker: true,
-          enableStashBuffer: true,
-          stashInitialSize: 64,
-          lazyLoad: false,
-          liveBufferLatencyChasing: true,
-          liveBufferLatencyMaxLatency: 1.5,
-          liveBufferLatencyMinRemain: 0.5
+          enableWorker: true,        // Performans için worker thread
+          enableStashBuffer: true,   // Buffer gerekli
+          stashInitialSize: 64,      // Küçük initial buffer
+          lazyLoad: false,           // Anında yükleme
+          
+          // 🎯 DÜŞÜK GECİKME AYARLARI
+          liveBufferLatencyChasing: true,   // Gecikmeyi kovalama
+          liveBufferLatencyMaxLatency: 1.0,  // Max 1 saniye buffer (düşürüldü)
+          liveBufferLatencyMinRemain: 0.3,   // Min 0.3 saniye
+          
+          // Ek optimizasyonlar
+          autoCleanupSourceBuffer: true,     // Bellek yönetimi
+          fixAudioTimestampGap: false        // Gereksiz sync önleme
         })
 
         playerRef.current.attachMediaElement(video)
         playerRef.current.load()
         playerRef.current.play().catch(() => {})
 
-        playerRef.current.on(mpegts.Events.ERROR, () => {
-          setError('Kanal yuklenemedi')
+        playerRef.current.on(mpegts.Events.ERROR, (errorType, errorDetail, errorInfo) => {
+          console.error('[Player Error]', { errorType, errorDetail, errorInfo })
+          
+          // URL geçersizse veya 404 alındıysa cache'i temizle
+          if (errorDetail?.code === 404 || errorDetail?.status === 404) {
+            console.warn('[Player] Stream 404 - Clearing cache')
+            M3UCache.clear(user?.code)
+            setError('Kanal bağlantısı eskimiş. Listeyi yenileyin.')
+          } else {
+            setError('Kanal yuklenemedi')
+          }
+          
           setLoading(false)
         })
 
@@ -884,11 +998,26 @@ function PlayerPage() {
                     <h3 className="font-black text-white text-lg">Kanallar</h3>
                     <p className="text-sm text-white/50">{filteredChannels.length} kanal bulundu</p>
                   </div>
-                  <div 
-                    className="w-10 h-10 rounded-xl flex items-center justify-center"
-                    style={{ backgroundColor: BG_DARK }}
-                  >
-                    <Tv className="w-5 h-5 text-white/50" />
+                  <div className="flex items-center gap-2">
+                    {/* Yenile Butonu */}
+                    <button
+                      onClick={() => {
+                        M3UCache.clear(user?.code)
+                        fetchChannels()
+                      }}
+                      disabled={loading}
+                      className="w-10 h-10 rounded-xl flex items-center justify-center transition-all hover:scale-110 disabled:opacity-50"
+                      style={{ backgroundColor: BG_DARK }}
+                      title="Kanalları Yenile"
+                    >
+                      <RefreshCw className={`w-5 h-5 text-white/70 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
+                    <div 
+                      className="w-10 h-10 rounded-xl flex items-center justify-center"
+                      style={{ backgroundColor: BG_DARK }}
+                    >
+                      <Tv className="w-5 h-5 text-white/50" />
+                    </div>
                   </div>
                 </div>
                 
