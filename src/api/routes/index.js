@@ -412,6 +412,191 @@ function createRoutes({
     });
   });
 
+  // =============================================================================
+  // USER PROFILE ROUTES (NEW - Real Data)
+  // =============================================================================
+  
+  // GET /api/v1/user/profile - Get user profile with stats
+  router.get(
+    '/user/profile',
+    rateLimiters.global,
+    authMiddleware,
+    async (req, res) => {
+      try {
+        const user = req.user;
+        
+        // Get payments
+        const { data: payments } = await userRepository.supabase
+          .from('payments')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+        
+        // Get devices  
+        const { data: devices } = await userRepository.supabase
+          .from('devices')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .order('last_active', { ascending: false });
+        
+        const totalSpent = (payments || [])
+          .filter(p => p.status === 'approved')
+          .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+
+        res.json({
+          status: 'success',
+          data: {
+            user: {
+              id: user.id,
+              code: user.code,
+              email: user.email,
+              status: user.status,
+              expires_at: user.expires_at,
+              created_at: user.created_at
+            },
+            stats: {
+              total_payments: (payments || []).length,
+              total_spent: totalSpent,
+              active_devices: (devices || []).length
+            }
+          }
+        });
+      } catch (error) {
+        logger.error('Get profile error', { error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to load profile' });
+      }
+    }
+  );
+
+  // GET /api/v1/user/payments - Get user payments
+  router.get(
+    '/user/payments',
+    rateLimiters.global,
+    authMiddleware,
+    async (req, res) => {
+      try {
+        const user = req.user;
+        
+        const { data: payments, error } = await userRepository.supabase
+          .from('payments')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        const totalSpent = (payments || [])
+          .filter(p => p.status === 'approved')
+          .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+
+        res.json({
+          status: 'success',
+          data: {
+            payments: (payments || []).map(p => ({
+              id: p.id,
+              package_name: 'Temel Paket', // TODO: Join with packages table
+              amount: p.amount,
+              method: p.method,
+              status: p.status,
+              created_at: p.created_at
+            })),
+            summary: {
+              total: (payments || []).length,
+              completed: (payments || []).filter(p => p.status === 'approved').length,
+              total_amount: totalSpent
+            }
+          }
+        });
+      } catch (error) {
+        logger.error('Get payments error', { error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to load payments' });
+      }
+    }
+  );
+
+  // GET /api/v1/user/devices - Get user devices
+  router.get(
+    '/user/devices',
+    rateLimiters.global,
+    authMiddleware,
+    async (req, res) => {
+      try {
+        const user = req.user;
+        
+        const { data: devices, error } = await userRepository.supabase
+          .from('devices')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('last_active', { ascending: false });
+
+        if (error) throw error;
+
+        const formattedDevices = (devices || []).map((d, index) => ({
+          id: d.id,
+          name: d.device_name,
+          type: d.device_type,
+          browser: d.browser,
+          os: d.os,
+          location: d.location,
+          ip_address: d.ip_address ? '***.***.***.***' : null,
+          last_active: d.last_active,
+          is_active: d.is_active,
+          is_current: index === 0 // First device is current
+        }));
+
+        res.json({
+          status: 'success',
+          data: {
+            devices: formattedDevices,
+            summary: {
+              total: (devices || []).length,
+              active: (devices || []).filter(d => d.is_active).length,
+              by_type: {
+                computer: (devices || []).filter(d => d.device_type === 'computer').length,
+                phone: (devices || []).filter(d => d.device_type === 'phone').length,
+                tablet: (devices || []).filter(d => d.device_type === 'tablet').length,
+                tv: (devices || []).filter(d => d.device_type === 'tv').length
+              }
+            }
+          }
+        });
+      } catch (error) {
+        logger.error('Get devices error', { error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to load devices' });
+      }
+    }
+  );
+
+  // DELETE /api/v1/user/devices/:id - Logout from device
+  router.delete(
+    '/user/devices/:id',
+    rateLimiters.global,
+    authMiddleware,
+    async (req, res) => {
+      try {
+        const { id } = req.params;
+        const user = req.user;
+        
+        const { error } = await userRepository.supabase
+          .from('devices')
+          .update({ is_active: false })
+          .eq('id', id)
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+
+        res.json({
+          status: 'success',
+          message: 'Device logged out successfully'
+        });
+      } catch (error) {
+        logger.error('Logout device error', { error: error.message });
+        res.status(500).json({ status: 'error', message: 'Failed to logout device' });
+      }
+    }
+  );
+
   return router;
 }
 
