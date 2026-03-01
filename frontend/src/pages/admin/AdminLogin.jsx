@@ -25,10 +25,18 @@ function AdminLogin() {
       return
     }
 
+    console.log('[AdminLogin] Attempting login...', { email: formData.email })
+    
     const result = await login(formData.email, formData.password)
     
+    console.log('[AdminLogin] Login result', { success: result.success, error: result.error })
+    
     if (result.success) {
-      navigate('/admin/ana-sayfa')
+      console.log('[AdminLogin] Login successful, navigating to dashboard...')
+      // Small delay to ensure store is updated
+      setTimeout(() => {
+        navigate('/admin/ana-sayfa', { replace: true })
+      }, 100)
     } else {
       setFormError(result.error || 'Giriş başarısız')
     }

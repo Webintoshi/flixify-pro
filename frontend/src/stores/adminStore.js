@@ -25,19 +25,30 @@ export const useAdminStore = create(
             body: JSON.stringify({ email, password })
           })
 
-          const data = await response.json()
+          const result = await response.json()
 
           if (!response.ok) {
-            throw new Error(data.message || 'Giriş başarısız')
+            throw new Error(result.message || result.error || 'Giriş başarısız')
           }
 
+          // Backend returns { status: 'success', data: { token, admin } }
+          const { token, admin } = result.data || {}
+          
+          if (!token) {
+            throw new Error('Token alınamadı')
+          }
+
+          console.log('[AdminStore] Login successful', { email, adminName: admin?.name })
+
           set({ 
-            adminToken: data.token, 
-            adminUser: data.admin,
-            isLoading: false 
+            adminToken: token, 
+            adminUser: admin,
+            isLoading: false,
+            error: null
           })
           return { success: true }
         } catch (error) {
+          console.error('[AdminStore] Login failed', error.message)
           set({ error: error.message, isLoading: false })
           return { success: false, error: error.message }
         }
@@ -343,6 +354,11 @@ export const useAdminStore = create(
     }),
     {
       name: 'admin-storage',
+      // Only persist token, not functions or loading states
+      partialize: (state) => ({ 
+        adminToken: state.adminToken,
+        adminUser: state.adminUser
+      }),
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.setHasHydrated(true)
