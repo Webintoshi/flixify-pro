@@ -1,0 +1,162 @@
+/**
+ * Authentication Middleware
+ * 
+ * Validates JWT tokens and attaches user context to request.
+ * Supports Bearer token in Authorization header.
+ * 
+ * Security Features:
+ * - Token blacklist checking
+ * - Correlation ID propagation
+ * - PII-safe logging
+ */
+
+const jwt = require('jsonwebtoken');
+const logger = require('../../config/logger');
+
+/**
+ * Create authentication middleware
+ * @param {Object} config - { jwtSecret, cacheService }
+ * @returns {Function} Express middleware
+ */
+function createAuthMiddleware(config) {
+  const { jwtSecret, cacheService } = config;
+
+  return async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      logger.debug('Missing or invalid authorization header', {
+        ip: req.ip,
+        path: req.path
+      });
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Missing or invalid authorization header',
+        code: 'AUTH_MISSING_TOKEN'
+      });
+    }
+
+    const token = authHeader.substring(7);
+
+    try {
+      // Check if token is blacklisted (after logout)
+      if (cacheService) {
+        const isBlacklisted = await cacheService.isTokenBlacklisted(token);
+        if (isBlacklisted) {
+          logger.warn('Blacklisted token used', {
+            ip: req.ip,
+            path: req.path
+          });
+          return res.status(401).json({
+            error: 'Unauthorized',
+            message: 'Token has been revoked',
+            code: 'AUTH_TOKEN_REVOKED'
+          });
+        }
+      }
+
+      // Verify token
+      const decoded = jwt.verify(token, jwtSecret, {
+        issuer: 'iptv-platform',
+        audience: 'iptv-users'
+      });
+
+      // Validate token payload structure
+      if (!decoded.code || !decoded.status) {
+        logger.warn('Invalid token payload structure');
+        return res.status(401).json({
+          error: 'Unauthorized',
+          message: 'Invalid token',
+          code: 'AUTH_INVALID_TOKEN'
+        });
+      }
+
+      // Attach user context to request
+      req.user = {
+        code: decoded.code,
+        status: decoded.status,
+        token: token,
+        iat: decoded.iat,
+        exp: decoded.exp
+      };
+
+      logger.debug('User authenticated', {
+        codeMasked: decoded.code.substring(0, 4) + '****' + decoded.code.slice(-4),
+        path: req.path
+      });
+
+      next();
+    } catch (error) {
+      if (error.name === 'TokenExpiredError') {
+        logger.debug('Expired token used', { path: req.path });
+        return res.status(401).json({
+          error: 'Unauthorized',
+          message: 'Token has expired',
+          code: 'AUTH_TOKEN_EXPIRED'
+        });
+      }
+
+      if (error.name === 'JsonWebTokenError') {
+        logger.warn('Invalid token signature', { path: req.path, ip: req.ip });
+        return res.status(401).json({
+          error: 'Unauthorized',
+          message: 'Invalid token',
+          code: 'AUTH_INVALID_TOKEN'
+        });
+      }
+
+      logger.error('Authentication error', { error: error.message, path: req.path });
+      return res.status(500).json({
+        error: 'Internal Server Error',
+        message: 'Authentication failed',
+        code: 'AUTH_ERROR'
+      });
+    }
+  };
+}
+
+/**
+ * Optional auth middleware - attaches user if token present, doesn't fail without it
+ */
+function createOptionalAuthMiddleware(config) {
+  const { jwtSecret, cacheService } = config;
+
+  return async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return next();
+    }
+
+    const token = authHeader.substring(7);
+
+    try {
+      if (cacheService) {
+        const isBlacklisted = await cacheService.isTokenBlacklisted(token);
+        if (isBlacklisted) return next();
+      }
+
+      const decoded = jwt.verify(token, jwtSecret, {
+        issuer: 'iptv-platform',
+        audience: 'iptv-users'
+      });
+
+      if (decoded.code && decoded.status) {
+        req.user = {
+          code: decoded.code,
+          status: decoded.status,
+          token: token
+        };
+      }
+    } catch (error) {
+      // Ignore errors in optional auth
+    }
+
+    next();
+  };
+}
+
+module.exports = {
+  createAuthMiddleware,
+  createOptionalAuthMiddleware
+};
