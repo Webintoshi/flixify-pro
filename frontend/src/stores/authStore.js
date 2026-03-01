@@ -15,7 +15,7 @@ export const useAuthStore = create(
       login: async (code) => {
         set({ isLoading: true, error: null })
         try {
-          const response = await api.post('/api/v1/auth/login', { code })
+          const response = await api.post('/auth/login', { code })
           const { token, user } = response.data.data
           
           // Set default auth header
@@ -40,7 +40,7 @@ export const useAuthStore = create(
 
       logout: async () => {
         try {
-          await api.post('/api/v1/auth/logout')
+          await api.post('/auth/logout')
         } catch (error) {
           // Ignore logout errors
         }
@@ -60,7 +60,7 @@ export const useAuthStore = create(
         if (!token) return
 
         try {
-          const response = await api.get('/api/v1/auth/me')
+          const response = await api.get('/auth/me')
           set({ user: response.data.data })
         } catch (error) {
           // Token might be expired

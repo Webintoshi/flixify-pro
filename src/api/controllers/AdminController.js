@@ -50,7 +50,7 @@ class AdminController {
     }
 
     // Verify password (bcrypt compare)
-    const bcrypt = require('bcrypt');
+    const bcrypt = require('bcryptjs');
     const isValidPassword = await bcrypt.compare(password, admin.password_hash);
 
     if (!isValidPassword) {
