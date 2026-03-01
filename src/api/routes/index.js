@@ -21,6 +21,7 @@ function createRoutes({
   adminController,
   m3uController,
   authMiddleware,
+  adminAuthMiddleware,
   optionalAuthMiddleware,
   rateLimiters,
   validators,
@@ -138,7 +139,7 @@ function createRoutes({
   router.get(
     '/admin/users',
     rateLimiters.admin,
-    authMiddleware,
+    adminAuthMiddleware,
     adminController.listUsers
   );
 
@@ -146,7 +147,7 @@ function createRoutes({
   router.get(
     '/admin/users/:code',
     rateLimiters.admin,
-    authMiddleware,
+    adminAuthMiddleware,
     validators.m3uProxy,
     adminController.getUser
   );
@@ -155,7 +156,7 @@ function createRoutes({
   router.put(
     '/admin/users/:code/activate',
     rateLimiters.admin,
-    authMiddleware,
+    adminAuthMiddleware,
     validators.activateUser,
     adminController.activateUser
   );
@@ -164,7 +165,7 @@ function createRoutes({
   router.put(
     '/admin/users/:code/suspend',
     rateLimiters.admin,
-    authMiddleware,
+    adminAuthMiddleware,
     validators.m3uProxy,
     adminController.suspendUser
   );
@@ -173,7 +174,7 @@ function createRoutes({
   router.put(
     '/admin/users/:code/notes',
     rateLimiters.admin,
-    authMiddleware,
+    adminAuthMiddleware,
     validators.m3uProxy,
     validators.updateNotes,
     adminController.updateNotes
@@ -183,7 +184,7 @@ function createRoutes({
   router.delete(
     '/admin/users/:code',
     rateLimiters.admin,
-    authMiddleware,
+    adminAuthMiddleware,
     validators.m3uProxy,
     adminController.deleteUser
   );
@@ -192,7 +193,7 @@ function createRoutes({
   router.get(
     '/admin/stats',
     rateLimiters.admin,
-    authMiddleware,
+    adminAuthMiddleware,
     adminController.getStats
   );
 
@@ -200,7 +201,7 @@ function createRoutes({
   router.get(
     '/admin/dashboard',
     rateLimiters.admin,
-    authMiddleware,
+    adminAuthMiddleware,
     adminController.getDashboard
   );
 
@@ -208,7 +209,7 @@ function createRoutes({
   router.get(
     '/admin/profile',
     rateLimiters.admin,
-    authMiddleware,
+    adminAuthMiddleware,
     adminController.getProfile
   );
 
@@ -216,7 +217,7 @@ function createRoutes({
   router.get(
     '/admin/payments',
     rateLimiters.admin,
-    authMiddleware,
+    adminAuthMiddleware,
     adminController.getPayments
   );
 
@@ -224,7 +225,7 @@ function createRoutes({
   router.post(
     '/admin/payments/:id/approve',
     rateLimiters.admin,
-    authMiddleware,
+    adminAuthMiddleware,
     adminController.approvePayment
   );
 
@@ -232,7 +233,7 @@ function createRoutes({
   router.post(
     '/admin/payments/:id/reject',
     rateLimiters.admin,
-    authMiddleware,
+    adminAuthMiddleware,
     adminController.rejectPayment
   );
 
@@ -240,7 +241,7 @@ function createRoutes({
   router.get(
     '/admin/packages',
     rateLimiters.admin,
-    authMiddleware,
+    adminAuthMiddleware,
     adminController.getPackages
   );
 
@@ -248,7 +249,7 @@ function createRoutes({
   router.post(
     '/admin/packages',
     rateLimiters.admin,
-    authMiddleware,
+    adminAuthMiddleware,
     adminController.createPackage
   );
 
@@ -256,7 +257,7 @@ function createRoutes({
   router.put(
     '/admin/packages/:id',
     rateLimiters.admin,
-    authMiddleware,
+    adminAuthMiddleware,
     adminController.updatePackage
   );
 
@@ -264,7 +265,7 @@ function createRoutes({
   router.delete(
     '/admin/packages/:id',
     rateLimiters.admin,
-    authMiddleware,
+    adminAuthMiddleware,
     adminController.deletePackage
   );
 
@@ -272,7 +273,7 @@ function createRoutes({
   router.get(
     '/admin/admins',
     rateLimiters.admin,
-    authMiddleware,
+    adminAuthMiddleware,
     adminController.getAdmins
   );
 
@@ -280,7 +281,7 @@ function createRoutes({
   router.post(
     '/admin/admins',
     rateLimiters.admin,
-    authMiddleware,
+    adminAuthMiddleware,
     adminController.createAdmin
   );
 
@@ -288,7 +289,7 @@ function createRoutes({
   router.delete(
     '/admin/admins/:id',
     rateLimiters.admin,
-    authMiddleware,
+    adminAuthMiddleware,
     adminController.deleteAdmin
   );
 
@@ -296,7 +297,7 @@ function createRoutes({
   router.get(
     '/admin/analytics',
     rateLimiters.admin,
-    authMiddleware,
+    adminAuthMiddleware,
     adminController.getAnalytics
   );
 

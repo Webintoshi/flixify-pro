@@ -156,7 +156,83 @@ function createOptionalAuthMiddleware(config) {
   };
 }
 
+/**
+ * Create admin authentication middleware
+ * Validates admin JWT tokens
+ */
+function createAdminAuthMiddleware(config) {
+  const { jwtSecret, cacheService } = config;
+
+  return async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Missing or invalid authorization header',
+        code: 'AUTH_MISSING_TOKEN'
+      });
+    }
+
+    const token = authHeader.substring(7);
+
+    try {
+      // Verify token
+      const decoded = jwt.verify(token, jwtSecret);
+
+      // Admin tokens have adminId, not code
+      if (!decoded.adminId) {
+        logger.warn('Invalid admin token - no adminId');
+        return res.status(401).json({
+          error: 'Unauthorized',
+          message: 'Invalid admin token',
+          code: 'AUTH_INVALID_TOKEN'
+        });
+      }
+
+      // Attach admin context to request
+      req.user = {
+        adminId: decoded.adminId,
+        email: decoded.email,
+        role: decoded.role,
+        token: token
+      };
+
+      logger.debug('Admin authenticated', {
+        email: decoded.email,
+        path: req.path
+      });
+
+      next();
+    } catch (error) {
+      if (error.name === 'TokenExpiredError') {
+        return res.status(401).json({
+          error: 'Unauthorized',
+          message: 'Token has expired',
+          code: 'AUTH_TOKEN_EXPIRED'
+        });
+      }
+
+      if (error.name === 'JsonWebTokenError') {
+        return res.status(401).json({
+          error: 'Unauthorized',
+          message: 'Invalid token',
+          code: 'AUTH_INVALID_TOKEN'
+        });
+      }
+
+      logger.error('Admin authentication error', { error: error.message, path: req.path });
+      return res.status(500).json({
+        error: 'Internal Server Error',
+        message: 'Authentication failed',
+        code: 'AUTH_ERROR'
+      });
+    }
+  };
+}
+
 module.exports = {
   createAuthMiddleware,
-  createOptionalAuthMiddleware
+  createOptionalAuthMiddleware,
+  createAdminAuthMiddleware
 };

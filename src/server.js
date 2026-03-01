@@ -44,7 +44,7 @@ const AdminController = require('./api/controllers/AdminController');
 const M3uController = require('./api/controllers/M3uController');
 
 // Middleware
-const { createAuthMiddleware, createOptionalAuthMiddleware } = require('./api/middleware/auth');
+const { createAuthMiddleware, createAdminAuthMiddleware, createOptionalAuthMiddleware } = require('./api/middleware/auth');
 const { createRateLimiters } = require('./api/middleware/rateLimit');
 const validators = require('./api/middleware/validation');
 const { errorHandler, notFoundHandler } = require('./api/middleware/errorHandler');
@@ -155,6 +155,7 @@ async function startServer() {
 
   // Middleware
   const authMiddleware = createAuthMiddleware({ jwtSecret: jwtConfig.secret, cacheService });
+  const adminAuthMiddleware = createAdminAuthMiddleware({ jwtSecret: jwtConfig.secret, cacheService });
   const optionalAuthMiddleware = createOptionalAuthMiddleware({ jwtSecret: jwtConfig.secret, cacheService });
   const rateLimiters = createRateLimiters(redisClient);
 
@@ -226,6 +227,7 @@ async function startServer() {
     adminController,
     m3uController,
     authMiddleware,
+    adminAuthMiddleware,
     optionalAuthMiddleware,
     rateLimiters,
     validators,
