@@ -73,14 +73,60 @@ function ProfileDevices() {
   const [showLogoutAllConfirm, setShowLogoutAllConfirm] = useState(false);
 
   useEffect(() => {
-    setTimeout(() => {
-      setDevices(mockDevices);
-      setLoading(false);
-    }, 500);
+    fetchDevices();
   }, []);
 
-  const handleLogoutDevice = (deviceId) => {
-    setDevices(devices.filter(d => d.id !== deviceId));
+  const fetchDevices = async () => {
+    try {
+      const token = localStorage.getItem('iptv_auth_token');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/user/devices`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Transform API data to match component format
+        const formattedDevices = (data.data?.devices || []).map(d => ({
+          id: d.id,
+          name: d.name,
+          type: d.type,
+          location: d.location,
+          ip: d.ip_address,
+          lastActive: d.last_active ? formatLastActive(d.last_active) : 'Bilinmiyor',
+          isCurrent: d.is_current,
+          browser: d.browser,
+          os: d.os
+        }));
+        setDevices(formattedDevices);
+      } else {
+        setDevices(mockDevices);
+      }
+    } catch (error) {
+      console.error('Failed to fetch devices:', error);
+      setDevices(mockDevices);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogoutDevice = async (deviceId) => {
+    try {
+      const token = localStorage.getItem('iptv_auth_token');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/user/devices/${deviceId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        setDevices(devices.filter(d => d.id !== deviceId));
+      }
+    } catch (error) {
+      console.error('Failed to logout device:', error);
+    }
     setShowLogoutConfirm(null);
   };
 

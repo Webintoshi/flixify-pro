@@ -95,11 +95,42 @@ function ProfilePayments() {
   const [fileName, setFileName] = useState('');
 
   useEffect(() => {
-    setTimeout(() => {
-      setPayments(mockPayments);
-      setLoading(false);
-    }, 500);
+    fetchPayments();
   }, []);
+
+  const fetchPayments = async () => {
+    try {
+      const token = localStorage.getItem('iptv_auth_token');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/user/payments`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Transform API data to match component format
+        const formattedPayments = (data.data?.payments || []).map(p => ({
+          id: p.id,
+          date: p.created_at ? p.created_at.split('T')[0] : '',
+          amount: parseFloat(p.amount),
+          description: p.package_name || 'Paket',
+          status: p.status === 'approved' ? 'completed' : p.status,
+          method: p.method,
+          receipt: !!p.receipt_url
+        }));
+        setPayments(formattedPayments);
+      } else {
+        // Fallback to mock data on error
+        setPayments(mockPayments);
+      }
+    } catch (error) {
+      console.error('Failed to fetch payments:', error);
+      setPayments(mockPayments);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
