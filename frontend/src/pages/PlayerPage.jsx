@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useAuthStore } from '../stores/authStore'
 import { 
   Play, Pause, Volume2, VolumeX, Maximize, Search,
   Tv, X, ArrowLeft, SkipBack, SkipForward, AlertCircle,
@@ -90,6 +91,9 @@ function PlayerPage() {
   const [page, setPage] = useState(1)
   const [showFilters, setShowFilters] = useState(false)
   const ITEMS_PER_PAGE = 20
+  
+  // Get user and token from auth store
+  const { user, token } = useAuthStore()
 
   // Debounce search query - 300ms gecikme
   const debouncedSearchQuery = useDebounce(searchQuery, 300)
@@ -250,17 +254,17 @@ function PlayerPage() {
   // Live TV
   const fetchChannels = async () => {
     try {
-      // Kullanıcının kendi M3U URL'sini kullan
-      const userCode = user?.code
-      if (!userCode) {
-        setError('Kullanıcı bilgisi bulunamadı')
+      // Kullanıcinin kendi M3U URL'sini kullan
+      if (!user?.m3uUrl) {
+        setError('M3U URL bulunamadi. Lutfen yonetici ile iletisime gecin.')
         setLoading(false)
         return
       }
       
-      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/m3u/${userCode}.m3u`, {
+      // Direkt M3U URL'sinden cek (backend proxy yerine)
+      const response = await fetch(user.m3uUrl, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18'
         }
       })
       
@@ -274,7 +278,8 @@ function PlayerPage() {
       if (parsed.length > 0) setCurrentChannel(parsed[0])
       setLoading(false)
     } catch (err) {
-      setError('Kanallar yuklenemedi')
+      console.error('M3U fetch error:', err)
+      setError('Kanallar yuklenemedi: ' + err.message)
       setLoading(false)
     }
   }
