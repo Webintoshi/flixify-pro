@@ -185,33 +185,75 @@ class M3uController {
     let cacheHit = !!m3uContent;
 
     if (!m3uContent) {
+      let fetchError = null;
+      
+      // Try 1: Use circuit breaker (normal path)
       try {
         m3uContent = await this._circuitBreaker.fire(m3uUrl);
-        // 5 dakika cache - M3U içeriği genelde sabit
-        await this._cacheService.set(cacheKey, m3uContent, 300);
-      } catch (error) {
-        logger.error('M3U fetch failed', { 
-          error: error.message,
-          code: code.substring(0, 4) + '****',
+        logger.info('M3U fetched via circuit breaker', { code: code.substring(0, 4) + '****' });
+      } catch (cbError) {
+        fetchError = cbError;
+        logger.warn('Circuit breaker fetch failed, trying direct fetch', { 
+          error: cbError.message,
           circuitBreakerState: this._circuitBreaker.opened ? 'OPEN' : 'CLOSED'
         });
         
-        // More specific error messages based on error type
+        // Try 2: Direct fetch as fallback (bypass circuit breaker)
+        try {
+          logger.info('Attempting direct fetch fallback', { url: m3uUrl.substring(0, 50) + '...' });
+          const response = await axios.get(m3uUrl, {
+            timeout: 15000, // Shorter timeout for fallback
+            maxRedirects: 3,
+            responseType: 'text',
+            headers: {
+              'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18',
+              'Accept': '*/*'
+            },
+            validateStatus: (status) => status === 200
+          });
+          m3uContent = response.data;
+          logger.info('Direct fetch fallback succeeded', { code: code.substring(0, 4) + '****' });
+          
+          // Circuit breaker was probably wrong, close it
+          if (this._circuitBreaker.opened) {
+            this._circuitBreaker.close();
+            logger.info('Circuit breaker auto-closed after successful direct fetch');
+          }
+        } catch (directError) {
+          logger.error('Direct fetch fallback also failed', { 
+            error: directError.message,
+            code: directError.code,
+            responseStatus: directError.response?.status
+          });
+          fetchError = directError;
+        }
+      }
+      
+      // If we got content, cache it
+      if (m3uContent) {
+        await this._cacheService.set(cacheKey, m3uContent, 300);
+      } else {
+        // Both methods failed
+        logger.error('M3U fetch failed (both CB and direct)', { 
+          error: fetchError?.message,
+          code: code.substring(0, 4) + '****'
+        });
+        
         let errorMessage = 'Failed to fetch M3U from provider';
         let errorCode = 'M3U_FETCH_ERROR';
         let statusCode = 502;
         
-        if (error.message.includes('Timeout')) {
+        if (fetchError?.message?.includes('Timeout')) {
           errorMessage = 'Provider connection timeout. Provider may be slow or unreachable.';
           errorCode = 'M3U_PROVIDER_TIMEOUT';
-        } else if (error.message.includes('DNS')) {
+        } else if (fetchError?.message?.includes('DNS')) {
           errorMessage = 'Provider DNS lookup failed. Provider domain may be invalid.';
           errorCode = 'M3U_PROVIDER_DNS_ERROR';
-        } else if (error.message.includes('Provider returned')) {
-          errorMessage = `Provider returned error: ${error.message}`;
+        } else if (fetchError?.response?.status) {
+          errorMessage = `Provider returned HTTP ${fetchError.response.status}`;
           errorCode = 'M3U_PROVIDER_ERROR';
         } else if (this._circuitBreaker.opened) {
-          errorMessage = 'Provider is temporarily unavailable (circuit breaker open). Please try again later.';
+          errorMessage = 'Provider is temporarily unavailable. Please try again later.';
           errorCode = 'M3U_CIRCUIT_BREAKER_OPEN';
           statusCode = 503;
         }
@@ -220,7 +262,7 @@ class M3uController {
           error: 'Bad Gateway',
           message: errorMessage,
           code: errorCode,
-          details: process.env.NODE_ENV === 'development' ? error.message : undefined
+          details: process.env.NODE_ENV === 'development' ? fetchError?.message : undefined
         });
       }
     }
@@ -306,9 +348,25 @@ class M3uController {
       status: 'success',
       data: {
         circuitBreaker: {
-          state: this._circuitBreaker.opened ? 'OPEN' : 'CLOSED'
+          state: this._circuitBreaker.opened ? 'OPEN' : 'CLOSED',
+          stats: this._circuitBreaker.stats
         }
       }
+    });
+  });
+  
+  /**
+   * POST /m3u/reset-circuit-breaker - Manually reset circuit breaker
+   * Emergency endpoint when provider recovers but CB is still open
+   */
+  resetCircuitBreaker = asyncHandler(async (req, res) => {
+    const wasOpen = this._circuitBreaker.opened;
+    this._circuitBreaker.close();
+    logger.info('Circuit breaker manually reset', { wasOpen });
+    res.json({
+      status: 'success',
+      message: 'Circuit breaker reset successfully',
+      data: { wasOpen, now: 'CLOSED' }
     });
   });
 

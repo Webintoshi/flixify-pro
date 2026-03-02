@@ -349,6 +349,14 @@ function createRoutes({
     m3uController.healthCheck
   );
 
+  // POST /api/v1/m3u/reset-circuit-breaker - Reset circuit breaker (admin only)
+  router.post(
+    '/m3u/reset-circuit-breaker',
+    rateLimiters.admin,
+    adminAuthMiddleware,
+    m3uController.resetCircuitBreaker
+  );
+
   // GET /api/v1/m3u/test-provider - Test M3U provider connectivity (diagnostic)
   router.get(
     '/m3u/test-provider',
