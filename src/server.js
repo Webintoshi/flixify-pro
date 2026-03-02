@@ -11,6 +11,8 @@
  * 4. Create controllers (API layer)
  * 5. Configure middleware
  * 6. Start HTTP server
+ * 
+ * Version: 1.0.1 - Fixed admin user management endpoints
  */
 
 require('dotenv').config();
