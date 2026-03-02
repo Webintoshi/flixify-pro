@@ -389,8 +389,17 @@ function ProfilePackages() {
 
   const loadData = async () => {
     try {
+      // Get token from zustand store
+      const authStorage = JSON.parse(localStorage.getItem('iptv-auth-storage') || '{}');
+      const token = authStorage.state?.token;
+      
+      if (!token) {
+        console.error('[ProfilePackages] No token found');
+        return;
+      }
+      
       const pkgResponse = await fetch(`${import.meta.env.VITE_API_URL || ''}/packages/public`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       if (pkgResponse.ok) {
         const pkgData = await pkgResponse.json();
@@ -412,7 +421,7 @@ function ProfilePackages() {
       }
 
       const settingsResponse = await fetch(`${import.meta.env.VITE_API_URL || ''}/settings/payment`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       if (settingsResponse.ok) {
         const settingsData = await settingsResponse.json();

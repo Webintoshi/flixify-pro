@@ -363,11 +363,22 @@ function PlayerPage() {
       
       // Backend proxy kullan (CORS ve auth için)
       const API_URL = import.meta.env.VITE_API_URL || ''
-      const token = localStorage.getItem('token')
+      
+      // Get token from zustand store (not localStorage directly)
+      const authStorage = JSON.parse(localStorage.getItem('iptv-auth-storage') || '{}')
+      const token = authStorage.state?.token
+      
+      if (!token) {
+        console.error('[Player] No token found, redirecting to login')
+        window.location.href = '/'
+        return
+      }
+      
       const fetchUrl = `${API_URL}/m3u/${user.code}.m3u?v=2`
       
       console.log('[Player] Fetching M3U from:', fetchUrl)
       console.log('[Player] User M3U URL:', user.m3uUrl ? 'defined' : 'undefined')
+      console.log('[Player] Token present:', token ? 'yes' : 'no')
       
       const response = await fetch(fetchUrl, {
         headers: {

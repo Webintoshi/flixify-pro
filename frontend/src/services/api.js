@@ -40,8 +40,19 @@ api.interceptors.response.use(
     // Handle specific error cases
     if (error.response?.status === 401) {
       // Token expired or invalid
+      const errorCode = error.response?.data?.code
+      const errorMessage = error.response?.data?.message || 'Oturum süresi dolmuş'
+      
+      console.error('Auth error:', { code: errorCode, message: errorMessage })
+      
+      // Clear storage and redirect to login
       localStorage.removeItem('iptv-auth-storage')
-      window.location.href = '/'
+      delete api.defaults.headers.common['Authorization']
+      
+      // Only redirect if not already on login page
+      if (window.location.pathname !== '/') {
+        window.location.href = '/?error=' + encodeURIComponent(errorMessage)
+      }
     }
 
     if (error.response?.status === 429) {

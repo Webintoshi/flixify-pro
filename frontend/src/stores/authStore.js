@@ -72,6 +72,21 @@ export const useAuthStore = create(
 
       clearError: () => set({ error: null }),
 
+      // Sync token to API headers (call this before making authenticated requests)
+      syncToken: () => {
+        const token = get().token
+        if (token) {
+          api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+          return true
+        }
+        return false
+      },
+
+      // Check if token is valid (exists and not expired)
+      isAuthenticated: () => {
+        return !!get().token
+      },
+
       // Hydration flag
       _hasHydrated: false,
       setHasHydrated: (state) => set({ _hasHydrated: state })

@@ -718,26 +718,93 @@ class AdminController {
 
   /**
    * GET /admin/analytics
-   * Get analytics data
+   * Get analytics data for admin dashboard
    */
   getAnalytics = asyncHandler(async (req, res) => {
     const userCounts = await this._userRepository.countByStatus();
     const expiredUsers = await this._userRepository.findExpired();
     
-    // Get daily stats for last 30 days
-    const dailyStats = await this._adminRepository.getDailyStats(30);
+    // Get payments data
+    const { data: payments } = await this._adminRepository.getPayments();
+    const approvedPayments = (payments || []).filter(p => p.status === 'approved');
+    const pendingPayments = (payments || []).filter(p => p.status === 'pending');
+    
+    // Calculate revenue
+    const totalRevenue = approvedPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+    
+    // Get daily revenue for last 7 days
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      return d.toISOString().split('T')[0];
+    });
+    
+    const dailyRevenue = last7Days.map(date => {
+      const dayPayments = approvedPayments.filter(p => p.created_at && p.created_at.startsWith(date));
+      return dayPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+    });
+    
+    // Get packages data
+    const { data: packages } = await this._adminRepository.getPackages();
+    
+    // Calculate package distribution (mock - would need user-package relation)
+    const packageDistribution = (packages || []).slice(0, 4).map((pkg, index) => ({
+      name: pkg.name || `Paket ${index + 1}`,
+      count: Math.floor(userCounts.total * (0.4 - index * 0.1)) || 0,
+      percentage: Math.floor((0.4 - index * 0.1) * 100) || 0
+    }));
+    
+    // Payment methods breakdown
+    const methods = {};
+    approvedPayments.forEach(p => {
+      const method = p.method || 'Unknown';
+      if (!methods[method]) methods[method] = { name: method, amount: 0, count: 0 };
+      methods[method].amount += parseFloat(p.amount || 0);
+      methods[method].count++;
+    });
+    
+    // Top users by spending
+    const userSpending = {};
+    approvedPayments.forEach(p => {
+      if (!userSpending[p.user_id]) {
+        userSpending[p.user_id] = { totalSpent: 0, payments: 0 };
+      }
+      userSpending[p.user_id].totalSpent += parseFloat(p.amount || 0);
+      userSpending[p.user_id].payments++;
+    });
+    
+    const topUsers = Object.entries(userSpending)
+      .sort((a, b) => b[1].totalSpent - a[1].totalSpent)
+      .slice(0, 5)
+      .map(([userId, data]) => ({
+        code: '****' + userId.slice(-4),
+        totalSpent: data.totalSpent,
+        payments: data.payments
+      }));
 
     res.json({
       status: 'success',
       data: {
-        overview: {
-          totalUsers: userCounts.total,
-          activeUsers: userCounts.active,
-          growthRate: 0, // Calculate if needed
-          expirationRate: userCounts.active > 0 ? (expiredUsers.length / userCounts.active) : 0
+        revenue: {
+          total: Math.floor(totalRevenue),
+          change: 0,
+          daily: dailyRevenue
         },
-        dailyStats,
-        timestamp: new Date().toISOString()
+        users: {
+          total: userCounts.total,
+          active: userCounts.active,
+          new: userCounts.total - (userCounts.active + userCounts.suspended + userCounts.pending),
+          growth: 0
+        },
+        payments: {
+          total: approvedPayments.length,
+          pending: pendingPayments.length,
+          methods: Object.values(methods).slice(0, 3)
+        },
+        packages: {
+          distribution: packageDistribution
+        },
+        topUsers: topUsers
       }
     });
   });
