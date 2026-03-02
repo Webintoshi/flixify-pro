@@ -31,47 +31,6 @@ function AdminAnalytics() {
       setAnalytics(data)
     } catch (error) {
       console.error('Analytics load error:', error)
-      // Mock data
-      setAnalytics({
-        revenue: {
-          total: 145000,
-          previous: 120000,
-          change: 20.8,
-          daily: [1200, 1500, 1300, 1800, 1400, 2000, 1600]
-        },
-        users: {
-          total: 1250,
-          new: 45,
-          active: 980,
-          expired: 270,
-          growth: 15.2
-        },
-        packages: {
-          popular: 'Premium',
-          distribution: [
-            { name: 'Temel', count: 150, percentage: 12 },
-            { name: 'Standart', count: 450, percentage: 36 },
-            { name: 'Premium', count: 450, percentage: 36 },
-            { name: 'Aile', count: 200, percentage: 16 }
-          ]
-        },
-        payments: {
-          total: 456,
-          pending: 23,
-          approved: 420,
-          rejected: 13,
-          methods: [
-            { name: 'Havale/EFT', count: 200, amount: 35000 },
-            { name: 'Kredi Kartı', count: 180, amount: 65000 },
-            { name: 'Kripto', count: 76, amount: 45000 }
-          ]
-        },
-        topUsers: [
-          { code: 'A1B2C3D4', totalSpent: 1500, payments: 10 },
-          { code: 'E5F6G7H8', totalSpent: 1200, payments: 8 },
-          { code: 'I9J0K1L2', totalSpent: 1100, payments: 7 },
-        ]
-      })
     } finally {
       setLoading(false)
     }

@@ -29,7 +29,6 @@ function AdminDashboard() {
       console.log('[AdminDashboard] API response:', result)
       
       // API returns { status: 'success', data: { stats, recentUsers } }
-      // Transform to match frontend expected format
       const apiData = result.data || result
       
       if (apiData.stats) {
@@ -40,58 +39,38 @@ function AdminDashboard() {
           expiredUsers: apiData.stats.expiredUsers || 0,
           pendingUsers: apiData.stats.pendingUsers || 0,
           suspendedUsers: apiData.stats.suspendedUsers || 0,
-          // Use mock data for fields not yet in backend
-          totalPackages: mockStats.totalPackages,
-          totalPayments: mockStats.totalPayments,
-          pendingPayments: mockStats.pendingPayments,
-          todayRevenue: mockStats.todayRevenue,
-          monthlyRevenue: mockStats.monthlyRevenue,
+          totalPackages: apiData.stats.totalPackages || 0,
+          totalPayments: apiData.stats.totalPayments || 0,
+          pendingPayments: apiData.stats.pendingPayments || 0,
+          todayRevenue: apiData.stats.todayRevenue || 0,
+          monthlyRevenue: apiData.stats.monthlyRevenue || 0,
           // Transform recent users
           recentUsers: (apiData.recentUsers || []).map((u, index) => ({
             id: index + 1,
             code: u.code || 'UNKNOWN',
-            package: 'Premium', // Default package
-            expiry: u.createdAt ? new Date(new Date(u.createdAt).getTime() + 30*24*60*60*1000).toISOString().split('T')[0] : '2024-12-31',
+            package: u.package || 'N/A',
+            expiry: u.expiresAt ? u.expiresAt.split('T')[0] : 'N/A',
             status: u.status || 'pending'
           })),
-          recentPayments: mockStats.recentPayments
+          recentPayments: (apiData.recentPayments || []).map((p, index) => ({
+            id: index + 1,
+            user: p.userCode || 'UNKNOWN',
+            amount: p.amount || 0,
+            method: p.method || 'N/A',
+            status: p.status || 'pending',
+            date: p.createdAt ? p.createdAt.split('T')[0] : 'N/A'
+          }))
         }
         setStats(transformedStats)
-      } else {
-        // Fallback to mock data if API structure unexpected
-        console.warn('[AdminDashboard] Unexpected API structure, using mock data')
-        setStats(mockStats)
       }
     } catch (error) {
       console.error('Stats load error:', error)
-      setStats(mockStats) // Fallback to mock data on error
     } finally {
       setLoading(false)
     }
   }
 
-  // Mock data for demonstration
-  const mockStats = {
-    totalUsers: 1250,
-    activeUsers: 980,
-    expiredUsers: 270,
-    totalPackages: 5,
-    totalPayments: 456,
-    pendingPayments: 23,
-    todayRevenue: 12500,
-    monthlyRevenue: 145000,
-    recentUsers: [
-      { id: 1, code: 'A1B2C3D4', package: 'Premium', expiry: '2024-12-31', status: 'active' },
-      { id: 2, code: 'E5F6G7H8', package: 'Standart', expiry: '2024-11-15', status: 'active' },
-      { id: 3, code: 'I9J0K1L2', package: 'Temel', expiry: '2024-10-01', status: 'expired' },
-    ],
-    recentPayments: [
-      { id: 1, user: 'A1B2C3D4', amount: 150, method: 'Havale', status: 'pending', date: '2024-03-15' },
-      { id: 2, user: 'E5F6G7H8', amount: 300, method: 'Kredi Kartı', status: 'approved', date: '2024-03-14' },
-    ]
-  }
-
-  const displayStats = stats || mockStats
+  const displayStats = stats || {}
 
   const statCards = [
     { 

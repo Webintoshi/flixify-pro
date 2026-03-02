@@ -39,13 +39,7 @@ function AdminPayments() {
       setPayments(data.payments || [])
     } catch (error) {
       console.error('Payments load error:', error)
-      // Mock data
-      setPayments([
-        { id: 1, userCode: 'A1B2C3D4E5F67890', userEmail: 'user1@example.com', amount: 150, method: 'Havale', bank: 'Ziraat Bankası', status: 'pending', date: '2024-03-15T10:30:00', receipt: 'dekont123.jpg', note: 'Mart ayı ödemesi' },
-        { id: 2, userCode: 'B2C3D4E5F6G78901', userEmail: 'user2@example.com', amount: 300, method: 'Kredi Kartı', bank: null, status: 'approved', date: '2024-03-14T15:45:00', receipt: null, note: '' },
-        { id: 3, userCode: 'C3D4E5F6G7H89012', userEmail: 'user3@example.com', amount: 150, method: 'Kripto', bank: null, status: 'pending', date: '2024-03-15T09:15:00', receipt: 'tx_hash_abc', note: 'USDT ödemesi' },
-        { id: 4, userCode: 'D4E5F6G7H8I90123', userEmail: 'user4@example.com', amount: 100, method: 'Havale', bank: 'Garanti', status: 'rejected', date: '2024-03-13T11:20:00', receipt: 'dekont456.jpg', rejectReason: 'Yetersiz bakiye', note: '' },
-      ])
+      setPayments([])
     } finally {
       setLoading(false)
     }

@@ -57,17 +57,8 @@ function AdminUsers() {
       setPackages(packagesData.packages || [])
     } catch (error) {
       console.error('Data load error:', error)
-      // Mock data for demonstration
-      setUsers([
-        { id: 1, code: 'A1B2C3D4E5F67890', email: 'user1@example.com', package: 'Premium', expiry: '2024-12-31', status: 'active', m3uUrl: 'http://example.com/playlist1', createdAt: '2024-01-15' },
-        { id: 2, code: 'B2C3D4E5F6G78901', email: 'user2@example.com', package: 'Standart', expiry: '2024-11-15', status: 'active', m3uUrl: 'http://example.com/playlist2', createdAt: '2024-02-20' },
-        { id: 3, code: 'C3D4E5F6G7H89012', email: null, package: 'Temel', expiry: '2024-10-01', status: 'expired', m3uUrl: null, createdAt: '2024-03-10' },
-      ])
-      setPackages([
-        { id: 1, name: 'Temel', price: 50, duration: 30 },
-        { id: 2, name: 'Standart', price: 100, duration: 30 },
-        { id: 3, name: 'Premium', price: 150, duration: 30 },
-      ])
+      setUsers([])
+      setPackages([])
     } finally {
       setLoading(false)
     }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../stores/authStore';
 import { 
   Package, Check, Zap, Clock, Calendar, Shield, X, 
   CreditCard, Landmark, Bitcoin, Copy, CheckCircle, 
@@ -13,8 +14,14 @@ const BG_SURFACE = '#141414';
 const BG_CARD = '#1a1a1a';
 const BORDER = '#2a2a2a';
 
-// Tek Paket - Sadece sure secenekleri degisir
-const PACKAGE = {
+const PAYMENT_METHODS = [
+  { id: 'credit_card', name: 'Kredi Karti', icon: CreditCard, color: '#3b82f6' },
+  { id: 'bank_transfer', name: 'Havale / EFT', icon: Landmark, color: '#10b981' },
+  { id: 'crypto', name: 'Kripto Para', icon: Bitcoin, color: '#f59e0b' }
+];
+
+// Varsayilan paket (API yuklenene kadar)
+const DEFAULT_PACKAGE = {
   name: 'Flixify Pro',
   description: 'Tum iceriklere sinirsiz erisim',
   monthlyPrice: 99.90,
@@ -25,7 +32,6 @@ const PACKAGE = {
     'Sinirsiz Cihaz',
     'VIP Destek'
   ],
-  // Admin tarafindan belirlenen sureler ve indirimler
   durations: [
     { months: 1, label: '1 Ay', discount: 0 },
     { months: 3, label: '3 Ay', discount: 5, badge: '%5 Indirim' },
@@ -34,43 +40,83 @@ const PACKAGE = {
   ]
 };
 
-// Admin panelinden gelecek odeme ayarlari
-const mockPaymentSettings = {
-  creditCardLink: 'https://pay.flixifypro.com/odeme',
+// Varsayilan odeme ayarlari (API yuklenene kadar)
+const DEFAULT_PAYMENT_SETTINGS = {
+  creditCardLink: '#',
   bankTransfer: {
-    accountName: 'FLIXIFY PRO DIJITAL HIZMETLER LTD. STI.',
-    iban: 'TR00 1234 5678 9012 3456 7890 12'
+    accountName: 'FLIXIFY PRO',
+    iban: 'TR00 0000 0000 0000 0000 0000 00'
   },
-  cryptoWallet: '0x1234567890abcdef1234567890abcdef12345678'
+  cryptoWallet: '0x0000000000000000000000000000000000000000'
 };
-
-const PAYMENT_METHODS = [
-  { id: 'credit_card', name: 'Kredi Karti', icon: CreditCard, color: '#3b82f6' },
-  { id: 'bank_transfer', name: 'Havale / EFT', icon: Landmark, color: '#10b981' },
-  { id: 'crypto', name: 'Kripto Para', icon: Bitcoin, color: '#f59e0b' }
-];
 
 function ProfilePackages() {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
+  
   const [loading, setLoading] = useState(true);
-  const [selectedDuration, setSelectedDuration] = useState(PACKAGE.durations[0]);
+  const [pkg, setPkg] = useState(DEFAULT_PACKAGE);
+  const [paymentSettings, setPaymentSettings] = useState(DEFAULT_PAYMENT_SETTINGS);
+  const [selectedDuration, setSelectedDuration] = useState(DEFAULT_PACKAGE.durations[0]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentStep, setPaymentStep] = useState(1);
   const [selectedMethod, setSelectedMethod] = useState(null);
   const [copiedField, setCopiedField] = useState(null);
-  const [currentPackage, setCurrentPackage] = useState(null); // Aktif paket varsa
+  const [currentPackage, setCurrentPackage] = useState(null);
 
   useEffect(() => {
-    // API'den aktif paket kontrolu
-    setTimeout(() => {
-      // Mock: Aktif paket varsa goster
-      // setCurrentPackage({ expiryDate: '2026-04-01' });
-      setLoading(false);
-    }, 500);
+    loadData();
   }, []);
 
+  const loadData = async () => {
+    try {
+      // API'den paket bilgilerini cek
+      const pkgResponse = await fetch(`${import.meta.env.VITE_API_URL || ''}/packages/public`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (pkgResponse.ok) {
+        const pkgData = await pkgResponse.json();
+        if (pkgData.data?.packages?.[0]) {
+          const apiPkg = pkgData.data.packages[0];
+          setPkg({
+            name: apiPkg.name || DEFAULT_PACKAGE.name,
+            description: apiPkg.description || DEFAULT_PACKAGE.description,
+            monthlyPrice: apiPkg.monthlyPrice || apiPkg.price || DEFAULT_PACKAGE.monthlyPrice,
+            features: apiPkg.features || DEFAULT_PACKAGE.features,
+            durations: apiPkg.durations || DEFAULT_PACKAGE.durations
+          });
+          setSelectedDuration(apiPkg.durations?.[0] || DEFAULT_PACKAGE.durations[0]);
+        }
+      }
+
+      // API'den odeme ayarlarini cek
+      const settingsResponse = await fetch(`${import.meta.env.VITE_API_URL || ''}/settings/payment`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (settingsResponse.ok) {
+        const settingsData = await settingsResponse.json();
+        if (settingsData.data) {
+          setPaymentSettings({
+            creditCardLink: settingsData.data.creditCardLink || DEFAULT_PAYMENT_SETTINGS.creditCardLink,
+            bankTransfer: settingsData.data.bankTransfer || DEFAULT_PAYMENT_SETTINGS.bankTransfer,
+            cryptoWallet: settingsData.data.cryptoWallet || DEFAULT_PAYMENT_SETTINGS.cryptoWallet
+          });
+        }
+      }
+
+      // Kullanicinin aktif paketini kontrol et
+      if (user?.expiresAt) {
+        setCurrentPackage({ expiryDate: user.expiresAt });
+      }
+    } catch (error) {
+      console.error('Data load error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const calculatePrice = (duration) => {
-    const basePrice = PACKAGE.monthlyPrice * duration.months;
+    const basePrice = pkg.monthlyPrice * duration.months;
     const discountAmount = basePrice * (duration.discount / 100);
     return basePrice - discountAmount;
   };
@@ -85,7 +131,7 @@ function ProfilePackages() {
     setSelectedMethod(methodId);
     
     if (methodId === 'credit_card') {
-      window.open(mockPaymentSettings.creditCardLink, '_blank');
+      window.open(paymentSettings.creditCardLink, '_blank');
     } else {
       setPaymentStep(2);
     }
@@ -153,8 +199,8 @@ function ProfilePackages() {
             <div className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'rgba(229, 9, 20, 0.2)' }}>
               <Zap className="w-10 h-10" style={{ color: PRIMARY }} />
             </div>
-            <h2 className="text-3xl font-bold text-white mb-2">{PACKAGE.name}</h2>
-            <p className="text-white/60">{PACKAGE.description}</p>
+            <h2 className="text-3xl font-bold text-white mb-2">{pkg.name}</h2>
+            <p className="text-white/60">{pkg.description}</p>
           </div>
 
           {/* Sure Secimi */}
@@ -164,7 +210,7 @@ function ProfilePackages() {
               Kac Aylik Almak Istiyorsunuz?
             </label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {PACKAGE.durations.map((dur) => (
+              {pkg.durations.map((dur) => (
                 <button
                   key={dur.months}
                   onClick={() => setSelectedDuration(dur)}
@@ -197,7 +243,7 @@ function ProfilePackages() {
           >
             <div className="flex justify-between text-sm text-white/60 mb-2">
               <span>Aylik Fiyat</span>
-              <span>{PACKAGE.monthlyPrice.toFixed(2)} TL</span>
+              <span>{pkg.monthlyPrice.toFixed(2)} TL</span>
             </div>
             <div className="flex justify-between text-sm text-white/60 mb-2">
               <span>Sure</span>
@@ -206,7 +252,7 @@ function ProfilePackages() {
             {selectedDuration?.discount > 0 && (
               <div className="flex justify-between text-sm mb-2" style={{ color: '#46d369' }}>
                 <span>Indirim (%{selectedDuration.discount})</span>
-                <span>-{((PACKAGE.monthlyPrice * selectedDuration.months) * (selectedDuration.discount / 100)).toFixed(2)} TL</span>
+                <span>-{((pkg.monthlyPrice * selectedDuration.months) * (selectedDuration.discount / 100)).toFixed(2)} TL</span>
               </div>
             )}
             <div className="border-t border-white/10 pt-4 mt-4 flex justify-between items-center">
@@ -219,7 +265,7 @@ function ProfilePackages() {
 
           {/* Ozellikler */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
-            {PACKAGE.features.map((feature, idx) => (
+            {pkg.features.map((feature, idx) => (
               <div key={idx} className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: BG_CARD }}>
                 <Check className="w-5 h-5 flex-shrink-0" style={{ color: PRIMARY }} />
                 <span className="text-white/90">{feature}</span>
@@ -358,10 +404,10 @@ function ProfilePackages() {
                         <label className="text-xs text-white/50 block mb-1">Hesap Adi</label>
                         <div className="flex items-center gap-2">
                           <code className="flex-1 text-sm text-white bg-black/30 px-3 py-2 rounded-lg font-mono">
-                            {mockPaymentSettings.bankTransfer.accountName}
+                            {paymentSettings.bankTransfer.accountName}
                           </code>
                           <button
-                            onClick={() => handleCopy(mockPaymentSettings.bankTransfer.accountName, 'accountName')}
+                            onClick={() => handleCopy(paymentSettings.bankTransfer.accountName, 'accountName')}
                             className="p-2 rounded-lg transition-colors"
                             style={{ backgroundColor: copiedField === 'accountName' ? 'rgba(70, 211, 105, 0.2)' : 'rgba(255,255,255,0.1)' }}
                           >
@@ -378,10 +424,10 @@ function ProfilePackages() {
                         <label className="text-xs text-white/50 block mb-1">IBAN</label>
                         <div className="flex items-center gap-2">
                           <code className="flex-1 text-sm text-white bg-black/30 px-3 py-2 rounded-lg font-mono">
-                            {mockPaymentSettings.bankTransfer.iban}
+                            {paymentSettings.bankTransfer.iban}
                           </code>
                           <button
-                            onClick={() => handleCopy(mockPaymentSettings.bankTransfer.iban, 'iban')}
+                            onClick={() => handleCopy(paymentSettings.bankTransfer.iban, 'iban')}
                             className="p-2 rounded-lg transition-colors"
                             style={{ backgroundColor: copiedField === 'iban' ? 'rgba(70, 211, 105, 0.2)' : 'rgba(255,255,255,0.1)' }}
                           >
@@ -417,10 +463,10 @@ function ProfilePackages() {
                       
                       <div className="flex items-center gap-2">
                         <code className="flex-1 text-xs text-white bg-black/30 px-3 py-3 rounded-lg font-mono break-all">
-                          {mockPaymentSettings.cryptoWallet}
+                          {paymentSettings.cryptoWallet}
                         </code>
                         <button
-                          onClick={() => handleCopy(mockPaymentSettings.cryptoWallet, 'crypto')}
+                          onClick={() => handleCopy(paymentSettings.cryptoWallet, 'crypto')}
                           className="p-2 rounded-lg transition-colors flex-shrink-0"
                           style={{ backgroundColor: copiedField === 'crypto' ? 'rgba(70, 211, 105, 0.2)' : 'rgba(255,255,255,0.1)' }}
                         >

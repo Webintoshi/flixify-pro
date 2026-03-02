@@ -46,13 +46,7 @@ function AdminPackages() {
       setPackages(data.packages || [])
     } catch (error) {
       console.error('Packages load error:', error)
-      // Mock data
-      setPackages([
-        { id: 1, name: 'Temel', description: 'Temel paket ile başlayın', price: 50, duration: 30, features: ['100+ Kanal', 'SD Kalite'], isActive: true, userCount: 150 },
-        { id: 2, name: 'Standart', description: 'En popüler paket', price: 100, duration: 30, features: ['500+ Kanal', 'HD Kalite', 'Film & Dizi'], isActive: true, userCount: 450 },
-        { id: 3, name: 'Premium', description: 'Tam deneyim', price: 150, duration: 30, features: ['1000+ Kanal', '4K Kalite', 'Film & Dizi', 'Canlı Spor'], isActive: true, userCount: 320 },
-        { id: 4, name: 'Aile', description: 'Aile boyu eğlence', price: 200, duration: 30, features: ['1000+ Kanal', '4K Kalite', 'Çocuk Kanalları', 'Eşzamanlı 4 Cihaz'], isActive: true, userCount: 180 },
-      ])
+      setPackages([])
     } finally {
       setLoading(false)
     }

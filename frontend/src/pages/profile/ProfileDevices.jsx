@@ -11,53 +11,7 @@ const BG_SURFACE = '#141414';
 const BG_CARD = '#1a1a1a';
 const BORDER = '#2a2a2a';
 
-// Mock devices data
-const mockDevices = [
-  {
-    id: 1,
-    name: 'Chrome - Windows',
-    type: 'browser',
-    icon: Monitor,
-    isCurrent: true,
-    lastActive: 'Su an aktif',
-    location: 'Istanbul, Turkiye',
-    ip: '85.***.***.42',
-    loginDate: '2026-03-01 14:30'
-  },
-  {
-    id: 2,
-    name: 'iPhone 15 Pro',
-    type: 'mobile',
-    icon: Smartphone,
-    isCurrent: false,
-    lastActive: '2 saat once',
-    location: 'Istanbul, Turkiye',
-    ip: '88.***.***.15',
-    loginDate: '2026-03-01 12:15'
-  },
-  {
-    id: 3,
-    name: 'Samsung Smart TV',
-    type: 'tv',
-    icon: Tv,
-    isCurrent: false,
-    lastActive: '1 gun once',
-    location: 'Ankara, Turkiye',
-    ip: '78.***.***.91',
-    loginDate: '2026-02-28 20:45'
-  },
-  {
-    id: 4,
-    name: 'iPad Air',
-    type: 'tablet',
-    icon: Tablet,
-    isCurrent: false,
-    lastActive: '3 gun once',
-    location: 'Izmir, Turkiye',
-    ip: '92.***.***.33',
-    loginDate: '2026-02-26 18:20'
-  }
-];
+// Cihaz verileri API'den cekilir
 
 const deviceLimits = {
   browser: { limit: 3, label: 'Bilgisayar', icon: Monitor },
@@ -101,11 +55,11 @@ function ProfileDevices() {
         }));
         setDevices(formattedDevices);
       } else {
-        setDevices(mockDevices);
+        setDevices([]);
       }
     } catch (error) {
       console.error('Failed to fetch devices:', error);
-      setDevices(mockDevices);
+      setDevices([]);
     } finally {
       setLoading(false);
     }

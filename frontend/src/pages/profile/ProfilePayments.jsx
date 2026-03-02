@@ -32,27 +32,7 @@ const BG_SURFACE = '#141414';
 const BG_CARD = '#1a1a1a';
 const BORDER = '#2a2a2a';
 
-// Mock payments data
-const mockPayments = [
-  {
-    id: 'INV-2026-001',
-    date: '2026-03-01',
-    amount: 49.90,
-    description: 'Temel Paket - Mart 2026',
-    status: 'completed',
-    method: 'Kredi Kartı',
-    receipt: true
-  },
-  {
-    id: 'INV-2026-002',
-    date: '2026-02-01',
-    amount: 49.90,
-    description: 'Temel Paket - Şubat 2026',
-    status: 'completed',
-    method: 'Kredi Kartı',
-    receipt: true
-  }
-];
+// Odeme verileri API'den cekilir
 
 // Ödeme yöntemleri - Iconlarla
 const PAYMENT_METHODS = [
@@ -121,12 +101,11 @@ function ProfilePayments() {
         }));
         setPayments(formattedPayments);
       } else {
-        // Fallback to mock data on error
-        setPayments(mockPayments);
+        setPayments([]);
       }
     } catch (error) {
       console.error('Failed to fetch payments:', error);
-      setPayments(mockPayments);
+      setPayments([]);
     } finally {
       setLoading(false);
     }
