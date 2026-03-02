@@ -391,7 +391,7 @@ function PlayerPage() {
         // Detayli hata mesaji
         let errorMsg = `M3U erisim hatasi: ${response.status}`
         if (response.status === 404) {
-          errorMsg = 'M3U playlist bulunamadi (404). URL gecersiz veya sunucu erisilemiyor.'
+          errorMsg = 'M3U playlist bulunamadi (404). M3U URL süresi dolmus veya gecersiz. Lütfen yönetici ile iletisime gecin.'
         } else if (response.status === 403) {
           errorMsg = 'M3U erisim izni reddedildi (403). Abonelik suresi dolmus olabilir.'
         } else if (response.status === 401) {

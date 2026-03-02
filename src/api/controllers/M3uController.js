@@ -249,6 +249,10 @@ class M3uController {
         } else if (fetchError?.message?.includes('DNS')) {
           errorMessage = 'Provider DNS lookup failed. Provider domain may be invalid.';
           errorCode = 'M3U_PROVIDER_DNS_ERROR';
+        } else if (fetchError?.response?.status === 404) {
+          errorMessage = 'M3U playlist not found on provider (404). The URL may be expired or invalid. Please contact administrator to update M3U URL.';
+          errorCode = 'M3U_URL_EXPIRED';
+          statusCode = 404;
         } else if (fetchError?.response?.status) {
           errorMessage = `Provider returned HTTP ${fetchError.response.status}`;
           errorCode = 'M3U_PROVIDER_ERROR';
