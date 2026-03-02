@@ -370,23 +370,7 @@ function createRoutes({
     '/m3u/clear-cache',
     rateLimiters.admin,
     adminAuthMiddleware,
-    async (req, res) => {
-      try {
-        const { code } = req.body;
-        if (!code) {
-          return res.status(400).json({ error: 'User code required' });
-        }
-        
-        const cacheKey = `m3u:content:${code}`;
-        await cacheService.del(cacheKey);
-        
-        logger.info('M3U cache cleared', { code: code.substring(0, 4) + '****' });
-        res.json({ status: 'success', message: 'Cache cleared' });
-      } catch (error) {
-        logger.error('Cache clear error', { error: error.message });
-        res.status(500).json({ error: 'Failed to clear cache' });
-      }
-    }
+    m3uController.clearCache
   );
   
   // GET /api/v1/m3u/public/raw - Public M3U for frontend (no auth required, CORS enabled)

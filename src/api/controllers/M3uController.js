@@ -223,6 +223,32 @@ class M3uController {
       });
     }
   });
+
+  /**
+   * POST /m3u/reset-circuit-breaker - Reset circuit breaker
+   */
+  resetCircuitBreaker = asyncHandler(async (req, res) => {
+    const wasOpen = this._circuitBreaker.opened;
+    this._circuitBreaker.close();
+    logger.info('Circuit breaker reset', { wasOpen });
+    res.json({ status: 'success', message: 'Circuit breaker reset' });
+  });
+
+  /**
+   * POST /m3u/clear-cache - Clear M3U cache
+   */
+  clearCache = asyncHandler(async (req, res) => {
+    const { code } = req.body;
+    if (!code) {
+      return res.status(400).json({ error: 'User code required' });
+    }
+    
+    const cacheKey = `m3u:content:${code}`;
+    await this._cacheService.del(cacheKey);
+    
+    logger.info('M3U cache cleared', { code });
+    res.json({ status: 'success', message: 'Cache cleared' });
+  });
 }
 
 module.exports = M3uController;
