@@ -85,7 +85,7 @@ function LandingPage() {
             {/* Right Side */}
             <div className="flex items-center gap-4">
               <Link 
-                to="/register" 
+                to="/login" 
                 className="text-sm font-medium text-white hover:text-white/80 transition-colors"
               >
                 Giriş Yap
