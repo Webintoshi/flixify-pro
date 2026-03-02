@@ -121,9 +121,10 @@ class M3uController {
     logger.info('Cache check', { code, cacheHit: !!m3uContent });
 
     if (!m3uContent) {
-      logger.info('Fetching from provider', { code, url: m3uUrl.substring(0, 60) });
+      logger.info('Fetching from provider', { code, url: m3uUrl.substring(0, 60), cbState: this._circuitBreaker.opened ? 'OPEN' : 'CLOSED' });
       try {
-        m3uContent = await this._circuitBreaker.fire(m3uUrl);
+        // Direct fetch without circuit breaker
+        m3uContent = await this._fetchM3u(m3uUrl);
         logger.info('Provider fetch SUCCESS', { code, contentLength: m3uContent?.length });
         await this._cacheService.set(cacheKey, m3uContent, 300);
       } catch (error) {
