@@ -54,23 +54,33 @@ class M3uController {
     const proxyTargetUrl = PROXY_URL + encodeURIComponent(url);
     
     logger.info('Fetching M3U via Turkey proxy', { 
-      originalUrl: url.substring(0, 60),
-      proxyUrl: proxyTargetUrl.substring(0, 80)
+      originalUrl: url.substring(0, 80),
+      proxyUrl: proxyTargetUrl,
+      proxyHost: '5.175.136.42',
+      proxyPort: 3000
     });
     
     try {
       const response = await axios.get(proxyTargetUrl, {
-        timeout: 60000, // Longer timeout for proxy
-        responseType: 'text'
+        timeout: 60000,
+        responseType: 'text',
+        validateStatus: () => true // Accept any status to see what proxy returns
       });
       
       const duration = Date.now() - startTime;
       
-      logger.info('M3U fetched successfully via proxy', { 
+      logger.info('Proxy response received', { 
         status: response.status,
+        statusText: response.statusText,
         contentLength: response.data?.length,
+        dataPreview: response.data?.substring(0, 200),
         duration
       });
+      
+      // Check if proxy returned error
+      if (response.status >= 400) {
+        throw new Error(`Proxy returned HTTP ${response.status}: ${response.data}`);
+      }
       
       // Check for empty content
       if (!response.data || response.data.trim().length === 0) {
@@ -82,7 +92,8 @@ class M3uController {
       logger.error('M3U fetch error via proxy', { 
         error: error.message,
         code: error.code,
-        responseStatus: error.response?.status
+        responseStatus: error.response?.status,
+        proxyUrl: proxyTargetUrl
       });
       throw error;
     }
@@ -203,19 +214,29 @@ class M3uController {
   testProvider = asyncHandler(async (req, res) => {
     const testUrl = req.query.url || 'http://example.com/playlist.m3u';
     
+    // Test via Turkey proxy
+    const PROXY_URL = 'http://5.175.136.42:3000/';
+    const proxyTargetUrl = PROXY_URL + encodeURIComponent(testUrl);
+    
+    logger.info('Testing provider via Turkey proxy', { originalUrl: testUrl, proxyUrl: proxyTargetUrl });
+    
     try {
-      const response = await axios.get(testUrl, {
-        timeout: 10000,
-        maxRedirects: 5,
-        responseType: 'text'
+      const response = await axios.get(proxyTargetUrl, {
+        timeout: 30000,
+        responseType: 'text',
+        validateStatus: () => true
       });
       
       res.json({
-        status: 'success',
+        status: response.status >= 400 ? 'error' : 'success',
         data: {
           url: testUrl,
+          proxyUrl: proxyTargetUrl,
+          proxyHost: '5.175.136.42',
+          proxyPort: 3000,
           status: response.status,
-          contentLength: response.data?.length
+          contentLength: response.data?.length,
+          preview: response.data?.substring(0, 500)
         }
       });
     } catch (error) {
