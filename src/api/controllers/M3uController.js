@@ -23,13 +23,16 @@ class M3uController {
     this._circuitBreaker = new CircuitBreaker(this._fetchM3u.bind(this), {
       timeout: parseInt(process.env.PROXY_TIMEOUT_MS) || 30000,
       errorThresholdPercentage: 50,
-      resetTimeout: parseInt(process.env.CIRCUIT_BREAKER_RESET_TIMEOUT) || 30000,
+      resetTimeout: parseInt(process.env.CIRCUIT_BREAKER_RESET_TIMEOUT) || 15000, // 15s (was 30s)
       rollingCountTimeout: 10000,
       rollingCountBuckets: 10,
       name: 'm3u-fetcher'
     });
 
     this._setupCircuitBreakerEvents();
+    
+    // Auto-reset circuit breaker periodically to prevent stuck open state
+    this._startHealthCheck();
   }
 
   _setupCircuitBreakerEvents() {
@@ -44,6 +47,19 @@ class M3uController {
     this._circuitBreaker.on('close', () => {
       logger.info('M3U Circuit Breaker CLOSED - provider recovered');
     });
+  }
+
+  /**
+   * Start periodic health check to auto-reset circuit breaker if needed
+   */
+  _startHealthCheck() {
+    // Check every 60 seconds if circuit breaker is open and try to close it
+    setInterval(() => {
+      if (this._circuitBreaker.opened) {
+        logger.info('Auto-attempting to close circuit breaker during health check');
+        this._circuitBreaker.close();
+      }
+    }, 60000);
   }
 
   async _fetchM3u(url) {
@@ -473,6 +489,50 @@ class M3uController {
     res.json({
       status: diagnostics.overall === 'HEALTHY' ? 'success' : 'error',
       data: diagnostics
+    });
+  });
+
+  /**
+   * POST /m3u/clear-cache - Clear M3U cache for a user (admin only)
+   */
+  clearCache = asyncHandler(async (req, res) => {
+    const { code } = req.body;
+    
+    if (!code) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'User code is required'
+      });
+    }
+    
+    const cacheKey = `m3u:content:${code}`;
+    await this._cacheService.del(cacheKey);
+    
+    logger.info('M3U cache cleared', { codeMasked: code.substring(0, 4) + '****' });
+    
+    res.json({
+      status: 'success',
+      message: `M3U cache cleared for user ${code}`
+    });
+  });
+
+  /**
+   * POST /m3u/reset-circuit-breaker - Reset circuit breaker (admin only)
+   */
+  resetCircuitBreaker = asyncHandler(async (req, res) => {
+    const wasOpen = this._circuitBreaker.opened;
+    this._circuitBreaker.close();
+    
+    logger.info('Circuit breaker manually reset', { wasOpen });
+    
+    res.json({
+      status: 'success',
+      message: 'Circuit breaker reset successfully',
+      data: {
+        wasOpen,
+        isNowOpen: this._circuitBreaker.opened,
+        stats: this._circuitBreaker.stats
+      }
     });
   });
 }
