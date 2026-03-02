@@ -159,7 +159,8 @@ class SupabaseUserRepository extends UserRepository {
       const { data, error } = await this._supabase
         .from(this._table)
         .select('*')
-        .eq('status', statusString);
+        .eq('status', statusString)
+        .is('deleted_at', null);  // Exclude soft-deleted users
 
       if (error) throw error;
 
@@ -179,7 +180,8 @@ class SupabaseUserRepository extends UserRepository {
         .select('*')
         .eq('status', 'active')
         .lt('expires_at', now)
-        .not('expires_at', 'is', null);
+        .not('expires_at', 'is', null)
+        .is('deleted_at', null);  // Exclude soft-deleted users
 
       if (error) throw error;
 
@@ -265,7 +267,37 @@ class SupabaseUserRepository extends UserRepository {
     }
   }
 
+  /**
+   * Soft delete user (sets deleted_at timestamp)
+   * User record preserved for analytics, payments remain intact
+   */
   async delete(id) {
+    try {
+      const { data, error } = await this._supabase
+        .from(this._table)
+        .update({ 
+          deleted_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      if (!data) throw new Error('User not found');
+
+      logger.info('User soft-deleted successfully', { id, code: data.code });
+    } catch (error) {
+      logger.error('Database error in delete', { error: error.message, id });
+      throw new Error(`Failed to delete user: ${error.message}`);
+    }
+  }
+
+  /**
+   * Hard delete user (permanent removal)
+   * Use with caution - only for GDPR compliance or data cleanup
+   */
+  async permanentlyDelete(id) {
     try {
       const { error } = await this._supabase
         .from(this._table)
@@ -274,10 +306,10 @@ class SupabaseUserRepository extends UserRepository {
 
       if (error) throw error;
 
-      logger.info('User deleted successfully', { id });
+      logger.info('User permanently deleted', { id });
     } catch (error) {
-      logger.error('Database error in delete', { error: error.message, id });
-      throw new Error(`Failed to delete user: ${error.message}`);
+      logger.error('Database error in permanent delete', { error: error.message, id });
+      throw new Error(`Failed to permanently delete user: ${error.message}`);
     }
   }
 
@@ -303,7 +335,8 @@ class SupabaseUserRepository extends UserRepository {
     try {
       const { data, error } = await this._supabase
         .from(this._table)
-        .select('status', { count: 'exact' });
+        .select('status', { count: 'exact' })
+        .is('deleted_at', null);  // Exclude soft-deleted users
 
       if (error) throw error;
 
@@ -337,6 +370,7 @@ class SupabaseUserRepository extends UserRepository {
         .from(this._table)
         .select('*')
         .gte('created_at', cutoffDate.toISOString())
+        .is('deleted_at', null)  // Exclude soft-deleted users
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -345,6 +379,38 @@ class SupabaseUserRepository extends UserRepository {
     } catch (error) {
       logger.error('Database error in findRecent', { error: error.message, days });
       return [];
+    }
+  }
+
+  /**
+   * Get user statistics including deleted users (for analytics)
+   */
+  async getAnalyticsCounts() {
+    try {
+      // Active users count
+      const { count: activeCount, error: activeError } = await this._supabase
+        .from(this._table)
+        .select('*', { count: 'exact', head: true })
+        .is('deleted_at', null);
+
+      if (activeError) throw activeError;
+
+      // Deleted users count
+      const { count: deletedCount, error: deletedError } = await this._supabase
+        .from(this._table)
+        .select('*', { count: 'exact', head: true })
+        .not('deleted_at', 'is', null);
+
+      if (deletedError) throw deletedError;
+
+      return {
+        active: activeCount || 0,
+        deleted: deletedCount || 0,
+        total: (activeCount || 0) + (deletedCount || 0)
+      };
+    } catch (error) {
+      logger.error('Database error in getAnalyticsCounts', { error: error.message });
+      throw new Error(`Failed to get analytics counts: ${error.message}`);
     }
   }
 }

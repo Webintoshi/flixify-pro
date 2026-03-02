@@ -143,7 +143,7 @@ class AdminController {
 
   /**
    * GET /admin/users/:code
-   * Get specific user details
+   * Get specific user details with associated data counts
    */
   getUser = asyncHandler(async (req, res) => {
     const { code } = req.params;
@@ -168,6 +168,15 @@ class AdminController {
     // Add computed fields
     userData.canAccessContent = user.canAccessContent();
     userData.isExpired = user.isExpired();
+
+    // Get associated data counts for delete confirmation
+    try {
+      const userStats = await this._adminRepository.getUserStats(user.id);
+      userData.stats = userStats;
+    } catch (error) {
+      logger.warn('Failed to get user stats', { userId: user.id, error: error.message });
+      userData.stats = { payments: 0, devices: 0 };
+    }
 
     res.json({
       status: 'success',

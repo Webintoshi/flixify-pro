@@ -357,10 +357,19 @@ const ContentRow = ({ title, items, type, viewAllLink, icon: Icon, loading = fal
   )
 }
 
+// Helper: Check if user has valid subscription
+const hasValidSubscription = (user) => {
+  if (!user) return false
+  const hasExpiry = user.expiresAt && new Date(user.expiresAt) > new Date()
+  const hasM3U = !!user.m3uUrl
+  return hasExpiry && hasM3U
+}
+
 function HomePage() {
   const { user } = useAuthStore()
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false)
 
   const categories = [
     { id: 'live', title: 'Canlı TV', icon: Radio, count: '1000+ Kanal', link: '/live-tv', color: PRIMARY },
@@ -601,6 +610,59 @@ function HomePage() {
       </section>
 
       <div className="h-20" />
+
+      {/* Purchase Modal - Show when no valid subscription */}
+      {user && !hasValidSubscription(user) && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.95)' }}
+        >
+          <div 
+            className="w-full max-w-lg rounded-2xl p-8 text-center"
+            style={{ backgroundColor: BG_SURFACE, border: `2px solid ${PRIMARY}` }}
+          >
+            <div 
+              className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
+              style={{ backgroundColor: `${PRIMARY}20` }}
+            >
+              <Star className="w-10 h-10" style={{ color: PRIMARY }} />
+            </div>
+            
+            <h2 className="text-2xl font-bold text-white mb-4">
+              Paket Satın Alın
+            </h2>
+            
+            <p className="text-gray-400 mb-2">
+              İçerikleri izlemek için aktif bir paketiniz olmalıdır.
+            </p>
+            
+            <div className="text-sm text-gray-500 mb-8 space-y-1">
+              {!user.expiresAt && <p>• Erişim süresi tanımlanmamış</p>}
+              {user.expiresAt && new Date(user.expiresAt) <= new Date() && <p>• Erişim süresi dolmuş</p>}
+              {!user.m3uUrl && <p>• M3U bağlantısı tanımlanmamış</p>}
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={() => navigate('/profil/paketler')}
+                className="w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2"
+                style={{ backgroundColor: PRIMARY }}
+              >
+                <span>Paket Satın Al</span>
+                <span>→</span>
+              </button>
+              
+              <button
+                onClick={() => navigate('/profil')}
+                className="w-full py-3 rounded-xl font-medium text-white/70"
+                style={{ backgroundColor: BG_CARD }}
+              >
+                Profilime Git
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
