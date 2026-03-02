@@ -73,11 +73,19 @@ class M3uController {
         maxRedirects: parseInt(process.env.PROXY_MAX_REDIRECTS) || 5
       });
       
-      // Simple request - let axios handle redirects automatically
+      // Request with browser-like headers to bypass IP restrictions
       const response = await axios.get(url, {
         timeout: parseInt(process.env.PROXY_TIMEOUT_MS) || 30000,
         maxRedirects: 10,
-        responseType: 'text'
+        responseType: 'text',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'Accept-Encoding': 'gzip, deflate',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1'
+        }
       });
       
       const duration = Date.now() - startTime;
@@ -253,7 +261,14 @@ class M3uController {
           const response = await axios.get(m3uUrl, {
             timeout: 15000,
             maxRedirects: 10,
-            responseType: 'text'
+            responseType: 'text',
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+              'Accept-Language': 'en-US,en;q=0.5',
+              'Accept-Encoding': 'gzip, deflate',
+              'Connection': 'keep-alive'
+            }
           });
           m3uContent = response.data;
           logger.info('Direct fetch fallback succeeded', { code: code.substring(0, 4) + '****' });
