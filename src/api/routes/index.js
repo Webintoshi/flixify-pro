@@ -186,7 +186,7 @@ function createRoutes({
     rateLimiters.admin,
     adminAuthMiddleware,
     validators.m3uProxy,
-    adminController.updatePackage
+    adminController.updateUserPackage
   );
 
   // PUT /api/v1/admin/users/:code/m3u - Update user M3U URL
@@ -195,7 +195,7 @@ function createRoutes({
     rateLimiters.admin,
     adminAuthMiddleware,
     validators.m3uProxy,
-    adminController.updateM3U
+    adminController.updateUserM3U
   );
 
   // POST /api/v1/admin/users/:code/extend - Extend user expiry
