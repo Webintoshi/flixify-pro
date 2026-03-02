@@ -351,9 +351,29 @@ function useDebounce(value, delay) {
   return debouncedValue
 }
 
+// Helper: Check if user has valid subscription
+const hasValidSubscription = (user) => {
+  if (!user) return false
+  const hasExpiry = user.expiresAt && new Date(user.expiresAt) > new Date()
+  const hasM3U = !!user.m3uUrl
+  return hasExpiry && hasM3U
+}
+
 function MoviesPage() {
   const navigate = useNavigate()
   const { user } = useAuthStore()
+  
+  // Redirect to package purchase if no subscription
+  useEffect(() => {
+    if (user && !hasValidSubscription(user)) {
+      navigate('/profil/paketler', { 
+        state: { 
+          message: 'Filmleri izlemek için aktif bir paket satın almalısınız.' 
+        } 
+      })
+    }
+  }, [user, navigate])
+  
   const [movies, setMovies] = useState([])
   const [heroMovie, setHeroMovie] = useState(null)
   const [activeGenre, setActiveGenre] = useState('all')

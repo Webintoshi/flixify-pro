@@ -111,6 +111,14 @@ const CATEGORIES = [
   { id: 'music', name: 'Muzik', color: '#a855f7', icon: '🎵' },
 ]
 
+// Helper: Check if user has valid subscription
+const hasValidSubscription = (user) => {
+  if (!user) return false
+  const hasExpiry = user.expiresAt && new Date(user.expiresAt) > new Date()
+  const hasM3U = !!user.m3uUrl
+  return hasExpiry && hasM3U
+}
+
 function PlayerPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -121,6 +129,18 @@ function PlayerPage() {
   const type = searchParams.get('type')
   const videoUrl = searchParams.get('url')
   const videoTitle = searchParams.get('title')
+  
+  // Check subscription for live TV
+  useEffect(() => {
+    if (!type && user && !hasValidSubscription(user)) {
+      // Live TV mode without subscription
+      navigate('/profil/paketler', { 
+        state: { 
+          message: 'Canlı TV izlemek için aktif bir paket satın almalısınız.' 
+        } 
+      })
+    }
+  }, [type, user, navigate])
   
   const [videoMode, setVideoMode] = useState('loading')
   const [isPlaying, setIsPlaying] = useState(false)

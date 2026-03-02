@@ -32,6 +32,11 @@ class SupabaseUserRepository extends UserRepository {
   _toDomain(data) {
     if (!data) return null;
     
+    // Skip soft-deleted users in normal queries (they have deleted_at set)
+    if (data.deleted_at) {
+      return null;
+    }
+    
     try {
       return User.reconstitute({
         id: data.id,
@@ -41,7 +46,8 @@ class SupabaseUserRepository extends UserRepository {
         expiresAt: data.expires_at,
         adminNotes: data.admin_notes,
         createdAt: data.created_at,
-        updatedAt: data.updated_at
+        updatedAt: data.updated_at,
+        deletedAt: data.deleted_at
       });
     } catch (error) {
       // Log data integrity issue but don't crash the entire request

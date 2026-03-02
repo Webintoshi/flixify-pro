@@ -43,6 +43,8 @@ function AdminUsers() {
   const [showModal, setShowModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [userToDelete, setUserToDelete] = useState(null)
+  const [userStats, setUserStats] = useState(null)
+  const [loadingStats, setLoadingStats] = useState(false)
   const [formData, setFormData] = useState({
     durationDays: 30,
     m3uUrl: ''
@@ -112,9 +114,26 @@ function AdminUsers() {
     setShowModal(true)
   }
 
-  const handleDeleteClick = (user) => {
+  const handleDeleteClick = async (user) => {
     setUserToDelete(user)
+    setUserStats(null)
+    setLoadingStats(true)
     setShowDeleteModal(true)
+    
+    // Fetch user details with stats
+    try {
+      const response = await fetch(`${API_URL}/admin/users/${user.code}`, {
+        headers: { 'Authorization': `Bearer ${useAdminStore.getState().adminToken}` }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setUserStats(data.data?.stats || null)
+      }
+    } catch (error) {
+      console.error('Failed to load user stats:', error)
+    } finally {
+      setLoadingStats(false)
+    }
   }
 
   const handleDeleteConfirm = async () => {
@@ -510,15 +529,57 @@ function AdminUsers() {
               </p>
             </div>
 
-            <p className="text-gray-300 mb-6">
-              Bu kullanıcıyı kalıcı olarak silmek istediğinize emin misiniz? Tüm kullanıcı verileri ve geçmiş kayıtları silinecektir.
-            </p>
+            {/* User Stats Warning */}
+            {loadingStats ? (
+              <div className="flex items-center justify-center py-4 mb-4">
+                <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                <span className="text-gray-400 ml-2">Kullanıcı verileri yükleniyor...</span>
+              </div>
+            ) : userStats ? (
+              <div 
+                className="p-4 rounded-xl mb-4"
+                style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)' }}
+              >
+                <p className="text-amber-400 font-medium mb-3 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  Bu kullanıcıya ait kayıtlı veriler:
+                </p>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <p className="text-2xl font-bold text-white">{userStats.payments || 0}</p>
+                    <p className="text-xs text-gray-400">Ödeme</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-white">{userStats.devices || 0}</p>
+                    <p className="text-xs text-gray-400">Cihaz</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-green-400">₺{userStats.totalAmount?.toFixed(2) || '0.00'}</p>
+                    <p className="text-xs text-gray-400">Toplam Ödeme</p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            <div 
+              className="p-4 rounded-xl mb-6"
+              style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)' }}
+            >
+              <p className="text-blue-400 text-sm flex items-start gap-2">
+                <span className="text-lg">ℹ️</span>
+                <span>
+                  Kullanıcı soft-delete olarak işaretlenecektir. Ödemeler ve analiz verileri korunacak, 
+                  sadece kullanıcı listelerinde görünmeyecektir. Bu işlem 30 gün sonra kalıcı silinmek üzere işaretlenir.
+                </span>
+              </p>
+            </div>
 
             <div className="flex gap-3">
               <button
                 onClick={() => {
                   setShowDeleteModal(false)
                   setUserToDelete(null)
+                  setUserStats(null)
                 }}
                 disabled={deleting}
                 className="flex-1 py-3 rounded-xl font-medium text-white hover:bg-white/5 transition-colors"

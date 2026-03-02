@@ -318,6 +318,50 @@ class SupabaseAdminRepository {
       return [];
     }
   }
+
+  /**
+   * Get user statistics including payment and device counts
+   * Used for delete confirmation dialog
+   */
+  async getUserStats(userId) {
+    try {
+      // Get payment count
+      const { count: paymentCount, error: paymentError } = await this._supabase
+        .from('payments')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId);
+
+      if (paymentError) throw paymentError;
+
+      // Get device count
+      const { count: deviceCount, error: deviceError } = await this._supabase
+        .from('devices')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId);
+
+      if (deviceError) throw deviceError;
+
+      // Get total payment amount
+      const { data: payments, error: amountError } = await this._supabase
+        .from('payments')
+        .select('amount')
+        .eq('user_id', userId)
+        .eq('status', 'approved');
+
+      if (amountError) throw amountError;
+
+      const totalAmount = (payments || []).reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+
+      return {
+        payments: paymentCount || 0,
+        devices: deviceCount || 0,
+        totalAmount: totalAmount
+      };
+    } catch (error) {
+      logger.error('Database error in getUserStats', { error: error.message, userId });
+      throw error;
+    }
+  }
 }
 
 module.exports = SupabaseAdminRepository;

@@ -32,11 +32,15 @@ describe('User Entity', () => {
       expect(user.code.toString()).toBe('A7F2A9B1C4D8E6F0');
     });
 
-    test('should throw error for active user without M3U URL', () => {
-      expect(() => new User({
+    test('should allow active user without M3U URL (for data integrity)', () => {
+      // Note: This was changed to handle existing database records
+      // Validation now happens at application level, not entity construction
+      const user = new User({
         ...validUserData,
         status: 'active'
-      })).toThrow('Active users must have an M3U URL assigned');
+      });
+      expect(user.status.toString()).toBe('active');
+      expect(user.m3uUrl).toBeNull();
     });
 
     test('should accept active user with M3U URL', () => {
@@ -150,12 +154,17 @@ describe('User Entity', () => {
     });
 
     test('active user without M3U cannot access content', () => {
-      // This tests that we can't even create an active user without M3U
-      expect(() => new User({
+      // Active user can be created without M3U (data integrity)
+      // but cannot access content
+      const user = new User({
         ...validUserData,
         status: 'active',
         m3uUrl: null
-      })).toThrow('Active users must have an M3U URL assigned');
+      });
+      
+      const check = user.canAccessContent();
+      expect(check.allowed).toBe(false);
+      expect(check.reason).toContain('No M3U URL assigned');
     });
 
     test('expired user cannot access content', () => {

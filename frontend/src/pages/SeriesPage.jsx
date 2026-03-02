@@ -459,9 +459,29 @@ function useDebounce(value, delay) {
   return debouncedValue;
 }
 
+// Helper: Check if user has valid subscription
+const hasValidSubscription = (user) => {
+  if (!user) return false
+  const hasExpiry = user.expiresAt && new Date(user.expiresAt) > new Date()
+  const hasM3U = !!user.m3uUrl
+  return hasExpiry && hasM3U
+}
+
 function SeriesPage() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  
+  // Redirect to package purchase if no subscription
+  useEffect(() => {
+    if (user && !hasValidSubscription(user)) {
+      navigate('/profil/paketler', { 
+        state: { 
+          message: 'Dizileri izlemek için aktif bir paket satın almalısınız.' 
+        } 
+      })
+    }
+  }, [user, navigate])
+  
   const [series, setSeries] = useState([]);
   const [heroSeries, setHeroSeries] = useState(null);
   const [selectedSeries, setSelectedSeries] = useState(null);

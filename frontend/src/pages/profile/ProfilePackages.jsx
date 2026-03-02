@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -359,7 +359,19 @@ const PriceBreakdown = ({ pkg, selectedDuration }) => {
 
 function ProfilePackages() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuthStore();
+  
+  // Show message from redirect
+  const [alertMessage, setAlertMessage] = useState(location.state?.message || null);
+  
+  useEffect(() => {
+    if (alertMessage) {
+      // Clear message after 5 seconds
+      const timer = setTimeout(() => setAlertMessage(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [alertMessage])
   
   const [loading, setLoading] = useState(true);
   const [pkg, setPkg] = useState(DEFAULT_PACKAGE);

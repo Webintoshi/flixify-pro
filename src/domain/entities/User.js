@@ -24,7 +24,8 @@ class User {
     expiresAt = null,
     adminNotes = null,
     createdAt = new Date(),
-    updatedAt = new Date()
+    updatedAt = new Date(),
+    deletedAt = null
   }) {
     this._id = id;
     this._code = code instanceof Code ? code : Code.create(code);
@@ -34,6 +35,7 @@ class User {
     this._adminNotes = adminNotes;
     this._createdAt = new Date(createdAt);
     this._updatedAt = new Date(updatedAt);
+    this._deletedAt = deletedAt ? new Date(deletedAt) : null;
 
     this._validateInvariants();
     Object.freeze(this._code); // Code is immutable
@@ -47,7 +49,7 @@ class User {
     return new User({
       id: null,
       code,
-      status: UserStatus.ACTIVE,
+      status: UserStatus.PENDING,
       adminNotes
     });
   }
@@ -173,6 +175,8 @@ class User {
   get adminNotes() { return this._adminNotes; }
   get createdAt() { return this._createdAt; }
   get updatedAt() { return this._updatedAt; }
+  get deletedAt() { return this._deletedAt; }
+  get isDeleted() { return this._deletedAt !== null; }
 
   /**
    * Serialize for persistence
@@ -186,7 +190,8 @@ class User {
       expires_at: this._expiresAt?.toISOString() || null,
       admin_notes: this._adminNotes,
       created_at: this._createdAt.toISOString(),
-      updated_at: this._updatedAt.toISOString()
+      updated_at: this._updatedAt.toISOString(),
+      deleted_at: this._deletedAt?.toISOString() || null
     };
   }
 
@@ -202,7 +207,9 @@ class User {
       adminNotes: this._adminNotes,
       m3uUrl: this._m3uUrl?.toString() || null,
       createdAt: this._createdAt.toISOString(),
-      updatedAt: this._updatedAt.toISOString()
+      updatedAt: this._updatedAt.toISOString(),
+      deletedAt: this._deletedAt?.toISOString() || null,
+      isDeleted: this.isDeleted
     };
   }
 }
