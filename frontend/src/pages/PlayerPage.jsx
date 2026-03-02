@@ -361,9 +361,17 @@ function PlayerPage() {
       
       if (!silent) setLoading(true)
       
-      // Direkt M3U URL'sinden çek (backend proxy yerine)
-      const response = await fetch(user.m3uUrl, {
+      // Backend proxy kullan (CORS ve auth için)
+      const API_URL = import.meta.env.VITE_API_URL || ''
+      const token = localStorage.getItem('token')
+      const fetchUrl = `${API_URL}/m3u/${user.code}.m3u?v=2`
+      
+      console.log('[Player] Fetching M3U from:', fetchUrl)
+      console.log('[Player] User M3U URL:', user.m3uUrl ? 'defined' : 'undefined')
+      
+      const response = await fetch(fetchUrl, {
         headers: {
+          'Authorization': `Bearer ${token}`,
           'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18'
         }
       })
@@ -375,6 +383,8 @@ function PlayerPage() {
           errorMsg = 'M3U playlist bulunamadi (404). URL gecersiz veya sunucu erisilemiyor.'
         } else if (response.status === 403) {
           errorMsg = 'M3U erisim izni reddedildi (403). Abonelik suresi dolmus olabilir.'
+        } else if (response.status === 401) {
+          errorMsg = 'Oturum süresi dolmuş. Lütfen tekrar giriş yapın.'
         }
         throw new Error(errorMsg)
       }

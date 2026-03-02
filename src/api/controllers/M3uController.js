@@ -150,8 +150,10 @@ class M3uController {
     // Get user's M3U URL
     let m3uUrl;
     try {
+      logger.info('M3U proxy request received', { codeMasked: code.substring(0, 4) + '****' });
       const result = await this._getUserM3U.execute({ code });
       m3uUrl = result.url;
+      logger.info('User M3U URL retrieved', { codeMasked: code.substring(0, 4) + '****', url: m3uUrl ? m3uUrl.substring(0, 60) + '...' : 'null' });
       
       if (!m3uUrl) {
         logger.warn('User has no M3U URL assigned', { code: code.substring(0, 4) + '****' });
