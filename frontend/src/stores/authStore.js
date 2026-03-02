@@ -14,12 +14,15 @@ export const useAuthStore = create(
       // Actions
       login: async (code) => {
         set({ isLoading: true, error: null })
+        console.log('[AuthStore] Login started with code:', code.substring(0, 4) + '****')
         try {
           const response = await api.post('/auth/login', { code })
+          console.log('[AuthStore] Login API response:', response.data)
           const { token, user } = response.data.data
           
           // Set default auth header
           api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+          console.log('[AuthStore] Token saved, length:', token.length)
           
           set({ 
             token, 
@@ -30,6 +33,7 @@ export const useAuthStore = create(
           
           return { success: true }
         } catch (error) {
+          console.error('[AuthStore] Login error:', error.response?.data || error.message)
           set({ 
             isLoading: false, 
             error: error.response?.data?.message || 'Giriş başarısız'

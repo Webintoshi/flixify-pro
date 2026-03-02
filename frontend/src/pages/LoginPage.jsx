@@ -34,9 +34,15 @@ function LoginPage() {
       return
     }
     
+    console.log('[Login] Attempting login with code:', code.toUpperCase())
     const result = await login(code.toUpperCase())
+    console.log('[Login] Login result:', result)
+    
     if (result.success) {
+      console.log('[Login] Success, redirecting to /home')
       window.location.href = '/home'
+    } else {
+      console.log('[Login] Failed:', result.error)
     }
   }
 
