@@ -48,23 +48,25 @@ class M3uController {
 
   async _fetchM3u(url) {
     const startTime = Date.now();
-    logger.info('Fetching M3U from provider', { url: url.substring(0, 80) });
+    
+    // Use Turkey proxy to bypass IP restrictions
+    const PROXY_URL = 'http://5.175.136.42:3000/';
+    const proxyTargetUrl = PROXY_URL + encodeURIComponent(url);
+    
+    logger.info('Fetching M3U via Turkey proxy', { 
+      originalUrl: url.substring(0, 60),
+      proxyUrl: proxyTargetUrl.substring(0, 80)
+    });
     
     try {
-      // Request with VLC headers - many providers whitelist VLC player
-      const response = await axios.get(url, {
-        timeout: 30000,
-        maxRedirects: 5,
-        responseType: 'text',
-        headers: {
-          'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18',
-          'Accept': '*/*'
-        }
+      const response = await axios.get(proxyTargetUrl, {
+        timeout: 60000, // Longer timeout for proxy
+        responseType: 'text'
       });
       
       const duration = Date.now() - startTime;
       
-      logger.info('M3U fetched successfully', { 
+      logger.info('M3U fetched successfully via proxy', { 
         status: response.status,
         contentLength: response.data?.length,
         duration
@@ -77,7 +79,7 @@ class M3uController {
       
       return response.data;
     } catch (error) {
-      logger.error('M3U fetch error', { 
+      logger.error('M3U fetch error via proxy', { 
         error: error.message,
         code: error.code,
         responseStatus: error.response?.status
