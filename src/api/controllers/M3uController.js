@@ -195,10 +195,17 @@ class M3uController {
     // Get user's M3U URL
     let m3uUrl;
     try {
-      logger.info('M3U proxy request received', { codeMasked: code.substring(0, 4) + '****' });
+      logger.info('M3U proxy request received', { code: code });
       const result = await this._getUserM3U.execute({ code });
       m3uUrl = result.url;
-      logger.info('User M3U URL retrieved', { codeMasked: code.substring(0, 4) + '****', url: m3uUrl ? m3uUrl.substring(0, 60) + '...' : 'null' });
+      
+      // CRITICAL: Log full URL for debugging 404 errors
+      logger.info('User M3U URL retrieved', { 
+        code: code,
+        url: m3uUrl || 'NULL',
+        urlLength: m3uUrl ? m3uUrl.length : 0,
+        expiresAt: result.expiresAt
+      });
       
       if (!m3uUrl) {
         logger.warn('User has no M3U URL assigned', { code: code.substring(0, 4) + '****' });
@@ -245,7 +252,11 @@ class M3uController {
         
         // Try 2: Direct fetch as fallback (bypass circuit breaker)
         try {
-          logger.info('Attempting direct fetch fallback', { url: m3uUrl.substring(0, 50) + '...' });
+          logger.info('Attempting direct fetch fallback', { 
+            code: code,
+            url: m3uUrl,
+            urlLength: m3uUrl.length
+          });
           const response = await axios.get(m3uUrl, {
             timeout: 15000, // Shorter timeout for fallback
             maxRedirects: 3,
@@ -298,6 +309,13 @@ class M3uController {
           errorMessage = 'M3U playlist not found on provider (404). The URL may be expired or invalid. Please contact administrator to update M3U URL.';
           errorCode = 'M3U_URL_EXPIRED';
           statusCode = 404;
+        } else if (fetchError?.response?.status === 404) {
+          errorMessage = 'M3U URL not found (404). Please check if the URL is correct in admin panel.';
+          errorCode = 'M3U_URL_NOT_FOUND';
+          logger.error('M3U URL returned 404 - URL may be invalid', {
+            code: code,
+            url: m3uUrl
+          });
         } else if (fetchError?.response?.status) {
           errorMessage = `Provider returned HTTP ${fetchError.response.status}`;
           errorCode = 'M3U_PROVIDER_ERROR';
