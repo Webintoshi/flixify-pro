@@ -1,11 +1,31 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   User, Package, CreditCard, Monitor, Settings, LogOut, 
-  ChevronRight, Shield, Copy, Check
+  ChevronRight, Shield, Copy, Check, Clock, Calendar
 } from 'lucide-react';
 import '../styles/profile.css';
+
+// Kalan gün hesaplama
+const getRemainingDays = (expiresAt) => {
+  if (!expiresAt) return { days: 0, status: 'none', color: '#6b7280', text: 'Tanımsız' }
+  
+  const expiry = new Date(expiresAt)
+  const today = new Date()
+  const diffTime = expiry - today
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  
+  if (diffDays < 0) {
+    return { days: 0, status: 'expired', color: '#ef4444', text: 'Süresi Doldu' }
+  } else if (diffDays <= 7) {
+    return { days: diffDays, status: 'critical', color: '#ef4444', text: `${diffDays} gün kaldı` }
+  } else if (diffDays <= 30) {
+    return { days: diffDays, status: 'warning', color: '#f59e0b', text: `${diffDays} gün kaldı` }
+  } else {
+    return { days: diffDays, status: 'active', color: '#10b981', text: `${diffDays} gün kaldı` }
+  }
+}
 
 const menuItems = [
   { path: '/profil/paketler', label: 'Paketlerim', icon: Package },
@@ -26,6 +46,13 @@ function ProfilePage() {
   const formattedCode = user?.code ? user.code.match(/.{4}/g)?.join(' ') : '';
   const rawCode = user?.code || '';
   const [copied, setCopied] = useState(false);
+  const [remainingTime, setRemainingTime] = useState(null);
+
+  useEffect(() => {
+    if (user?.expiresAt) {
+      setRemainingTime(getRemainingDays(user.expiresAt));
+    }
+  }, [user?.expiresAt]);
 
   const handleCopyCode = async () => {
     if (!rawCode) return;
@@ -62,6 +89,35 @@ function ProfilePage() {
             </button>
           </div>
         </div>
+
+        {/* Kalan Süre Kartı */}
+        {remainingTime && (
+          <div 
+            className="mx-4 mb-4 p-4 rounded-xl"
+            style={{ 
+              backgroundColor: `${remainingTime.color}15`,
+              border: `1px solid ${remainingTime.color}30`
+            }}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <Clock className="w-4 h-4" style={{ color: remainingTime.color }} />
+              <span className="text-xs font-medium uppercase tracking-wider" style={{ color: remainingTime.color }}>
+                Kalan Süre
+              </span>
+            </div>
+            <p className="text-2xl font-bold text-white mb-1">
+              {remainingTime.days} <span className="text-sm font-normal text-gray-400">gün</span>
+            </p>
+            <p className="text-xs" style={{ color: remainingTime.color }}>
+              {remainingTime.text}
+            </p>
+            {user?.expiresAt && (
+              <p className="text-xs text-gray-500 mt-2">
+                Bitiş: {new Date(user.expiresAt).toLocaleDateString('tr-TR')}
+              </p>
+            )}
+          </div>
+        )}
 
         <nav className="sidebar-nav">
           {menuItems.map((item) => (

@@ -21,9 +21,9 @@ const BORDER = '#2a2a2a'
 // Kullanım süresi seçenekleri (gün bazlı)
 const DURATION_OPTIONS = [
   { value: 30, label: '30 Gün', description: '1 Aylık kullanım', color: '#3b82f6' },
-  { value: 90, label: '90 Gün', description: '3 Aylık kullanım', color: '#8b5cf6' },
-  { value: 180, label: '180 Gün', description: '6 Aylık kullanım', color: '#f59e0b', popular: true },
-  { value: 360, label: '360 Gün', description: '12 Aylık kullanım', color: '#10b981', best: true }
+  { value: 90, label: '90 Gün', description: '3 Aylık kullanım', color: '#8b5cf6', popular: true },
+  { value: 180, label: '180 Gün', description: '6 Aylık kullanım', color: '#f59e0b' },
+  { value: 365, label: '365 Gün', description: '1 Yıllık kullanım', color: '#10b981', best: true }
 ]
 
 function AdminUsers() {
@@ -73,6 +73,26 @@ function AdminUsers() {
     const expiryDate = new Date(today)
     expiryDate.setDate(today.getDate() + parseInt(days))
     return expiryDate.toLocaleDateString('tr-TR')
+  }
+
+  // Kalan gün sayısını hesapla
+  const getRemainingDays = (expiresAt) => {
+    if (!expiresAt) return { days: 0, status: 'expired', color: '#ef4444' }
+    
+    const expiry = new Date(expiresAt)
+    const today = new Date()
+    const diffTime = expiry - today
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    
+    if (diffDays < 0) {
+      return { days: 0, status: 'expired', color: '#ef4444', text: 'Süresi Doldu' }
+    } else if (diffDays <= 7) {
+      return { days: diffDays, status: 'critical', color: '#ef4444', text: `${diffDays} gün kaldı` }
+    } else if (diffDays <= 30) {
+      return { days: diffDays, status: 'warning', color: '#f59e0b', text: `${diffDays} gün kaldı` }
+    } else {
+      return { days: diffDays, status: 'active', color: '#10b981', text: `${diffDays} gün kaldı` }
+    }
   }
 
   const handleSetExpiry = (user) => {
@@ -201,9 +221,20 @@ function AdminUsers() {
                   </td>
                   <td className="p-4">
                     {user.expiresAt ? (
-                      <span className="text-sm" style={{ color: user.status === 'active' ? '#10b981' : '#ef4444' }}>
-                        {Math.max(0, Math.ceil((new Date(user.expiresAt) - new Date()) / (1000 * 60 * 60 * 24)))} gün
-                      </span>
+                      (() => {
+                        const remaining = getRemainingDays(user.expiresAt)
+                        return (
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-2 h-2 rounded-full"
+                              style={{ backgroundColor: remaining.color }}
+                            />
+                            <span className="text-sm font-medium" style={{ color: remaining.color }}>
+                              {remaining.text}
+                            </span>
+                          </div>
+                        )
+                      })()
                     ) : (
                       <span className="text-gray-500">-</span>
                     )}
