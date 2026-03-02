@@ -94,7 +94,7 @@ function App() {
         } 
       />
       <Route 
-        path="/register" 
+        path="/kayit-ol" 
         element={
           isAuthenticated ? <Navigate to="/home" replace /> : <RegisterPage />
         } 
