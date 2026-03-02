@@ -53,8 +53,11 @@ function AdminUsers() {
         fetchUsers(),
         fetchPackages()
       ])
-      setUsers(usersData.users || [])
-      setPackages(packagesData.packages || [])
+      // API returns { status: 'success', data: { users: [...] } }
+      const users = usersData.data?.users || usersData.users || []
+      const packages = packagesData.data?.packages || packagesData.packages || []
+      setUsers(users)
+      setPackages(packages)
     } catch (error) {
       console.error('Data load error:', error)
       setUsers([])
@@ -191,7 +194,7 @@ function AdminUsers() {
             <thead>
               <tr className="text-left text-gray-400 text-sm border-b" style={{ borderColor: BORDER }}>
                 <th className="p-4 font-medium">Kullanıcı Kodu</th>
-                <th className="p-4 font-medium">E-posta</th>
+                <th className="p-4 font-medium">Notlar</th>
                 <th className="p-4 font-medium">Paket</th>
                 <th className="p-4 font-medium">Bitiş Tarihi</th>
                 <th className="p-4 font-medium">Durum</th>
@@ -205,13 +208,15 @@ function AdminUsers() {
                   <td className="p-4">
                     <code className="text-white font-mono text-sm">{user.code}</code>
                   </td>
-                  <td className="p-4 text-gray-300">{user.email || '-'}</td>
+                  <td className="p-4 text-gray-300">{user.adminNotes || '-'}</td>
                   <td className="p-4">
                     <span className="px-2 py-1 rounded-lg text-sm" style={{ backgroundColor: 'rgba(229,9,20,0.2)', color: PRIMARY }}>
-                      {user.package}
+                      {user.package || 'N/A'}
                     </span>
                   </td>
-                  <td className="p-4 text-gray-300">{user.expiry}</td>
+                  <td className="p-4 text-gray-300">
+                    {user.expiresAt ? new Date(user.expiresAt).toLocaleDateString('tr-TR') : '-'}
+                  </td>
                   <td className="p-4">{getStatusBadge(user.status)}</td>
                   <td className="p-4">
                     {user.m3uUrl ? (

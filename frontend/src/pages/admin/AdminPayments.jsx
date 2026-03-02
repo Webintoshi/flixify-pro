@@ -36,7 +36,8 @@ function AdminPayments() {
   const loadPayments = async () => {
     try {
       const data = await fetchPayments()
-      setPayments(data.payments || [])
+      // API returns { status: 'success', data: { payments: [...] } }
+      setPayments(data.data?.payments || data.payments || [])
     } catch (error) {
       console.error('Payments load error:', error)
       setPayments([])

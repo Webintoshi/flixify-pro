@@ -43,7 +43,8 @@ function AdminPackages() {
   const loadPackages = async () => {
     try {
       const data = await fetchPackages()
-      setPackages(data.packages || [])
+      // API returns { status: 'success', data: { packages: [...] } }
+      setPackages(data.data?.packages || data.packages || [])
     } catch (error) {
       console.error('Packages load error:', error)
       setPackages([])
