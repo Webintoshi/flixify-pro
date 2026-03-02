@@ -404,7 +404,10 @@ class AdminController {
     const newExpiry = new Date(currentExpiry);
     newExpiry.setDate(newExpiry.getDate() + parseInt(days));
 
-    await this._userRepository.updateById(user.id, { expires_at: newExpiry.toISOString() });
+    await this._userRepository.updateById(user.id, { 
+      expires_at: newExpiry.toISOString(),
+      status: 'active'
+    });
 
     // Invalidate cache
     await this._cacheService.invalidateUser(code);
