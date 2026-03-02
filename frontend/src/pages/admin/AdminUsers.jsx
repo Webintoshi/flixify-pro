@@ -5,10 +5,9 @@ import {
   Search, 
   Plus, 
   Edit2, 
-  Trash2, 
+  Trash2,
   Calendar,
-  Package,
-  ExternalLink,
+  Clock,
   CheckCircle,
   X,
   Save,
@@ -19,27 +18,30 @@ const PRIMARY = '#E50914'
 const BG_SURFACE = '#141414'
 const BORDER = '#2a2a2a'
 
+// Kullanım süresi seçenekleri (gün bazlı)
+const DURATION_OPTIONS = [
+  { value: 30, label: '30 Gün', description: '1 Aylık kullanım', color: '#3b82f6' },
+  { value: 90, label: '90 Gün', description: '3 Aylık kullanım', color: '#8b5cf6' },
+  { value: 180, label: '180 Gün', description: '6 Aylık kullanım', color: '#f59e0b', popular: true },
+  { value: 360, label: '360 Gün', description: '12 Aylık kullanım', color: '#10b981', best: true }
+]
+
 function AdminUsers() {
   const { 
     fetchUsers, 
-    fetchPackages,
-    updateUserPackage, 
-    extendUserExpiry, 
+    updateUserExpiry, 
     updateUserM3U 
   } = useAdminStore()
 
   const [users, setUsers] = useState([])
-  const [packages, setPackages] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedUser, setSelectedUser] = useState(null)
   const [showModal, setShowModal] = useState(false)
-  const [modalMode, setModalMode] = useState('view') // view, edit, m3u, extend
+  const [modalMode, setModalMode] = useState('view') // expiry, m3u
   const [formData, setFormData] = useState({
-    packageId: '',
-    expiryDate: '',
-    m3uUrl: '',
-    extendDays: 30
+    durationDays: 30,
+    m3uUrl: ''
   })
   const [saving, setSaving] = useState(false)
 
@@ -49,19 +51,12 @@ function AdminUsers() {
 
   const loadData = async () => {
     try {
-      const [usersData, packagesData] = await Promise.all([
-        fetchUsers(),
-        fetchPackages()
-      ])
-      // API returns { status: 'success', data: { users: [...] } }
+      const usersData = await fetchUsers()
       const users = usersData.data?.users || usersData.users || []
-      const packages = packagesData.data?.packages || packagesData.packages || []
       setUsers(users)
-      setPackages(packages)
     } catch (error) {
       console.error('Data load error:', error)
       setUsers([])
-      setPackages([])
     } finally {
       setLoading(false)
     }
@@ -72,15 +67,18 @@ function AdminUsers() {
     (user.email && user.email.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
-  const handleEdit = (user) => {
+  // Yeni bitiş tarihini hesapla
+  const calculateNewExpiry = (days) => {
+    const today = new Date()
+    const expiryDate = new Date(today)
+    expiryDate.setDate(today.getDate() + parseInt(days))
+    return expiryDate.toLocaleDateString('tr-TR')
+  }
+
+  const handleSetExpiry = (user) => {
     setSelectedUser(user)
-    setFormData({
-      packageId: user.packageId || '',
-      expiryDate: user.expiry || '',
-      m3uUrl: user.m3uUrl || '',
-      extendDays: 30
-    })
-    setModalMode('edit')
+    setFormData({ ...formData, durationDays: 30 })
+    setModalMode('expiry')
     setShowModal(true)
   }
 
@@ -91,25 +89,14 @@ function AdminUsers() {
     setShowModal(true)
   }
 
-  const handleExtend = (user) => {
-    setSelectedUser(user)
-    setFormData({ ...formData, extendDays: 30 })
-    setModalMode('extend')
-    setShowModal(true)
-  }
-
   const handleSave = async () => {
     setSaving(true)
     try {
-      if (modalMode === 'edit') {
-        await updateUserPackage(selectedUser.code, {
-          packageId: formData.packageId,
-          expiryDate: formData.expiryDate
-        })
+      if (modalMode === 'expiry') {
+        // Bugünden itibaren seçilen gün kadar ekle
+        await updateUserExpiry(selectedUser.code, formData.durationDays)
       } else if (modalMode === 'm3u') {
         await updateUserM3U(selectedUser.code, formData.m3uUrl)
-      } else if (modalMode === 'extend') {
-        await extendUserExpiry(selectedUser.code, formData.extendDays)
       }
       await loadData()
       setShowModal(false)
@@ -155,7 +142,7 @@ function AdminUsers() {
             <Users className="w-6 h-6" style={{ color: PRIMARY }} />
             Kullanıcı Yönetimi
           </h1>
-          <p className="text-gray-400">Kullanıcıları yönetin ve paket atamaları yapın</p>
+          <p className="text-gray-400">Kullanıcıları yönetin ve erişim sürelerini tanımlayın</p>
         </div>
         <button 
           className="px-4 py-2 rounded-xl font-medium text-white flex items-center gap-2"
@@ -195,8 +182,8 @@ function AdminUsers() {
               <tr className="text-left text-gray-400 text-sm border-b" style={{ borderColor: BORDER }}>
                 <th className="p-4 font-medium">Kullanıcı Kodu</th>
                 <th className="p-4 font-medium">Notlar</th>
-                <th className="p-4 font-medium">Paket</th>
                 <th className="p-4 font-medium">Bitiş Tarihi</th>
+                <th className="p-4 font-medium">Kalan Süre</th>
                 <th className="p-4 font-medium">Durum</th>
                 <th className="p-4 font-medium">M3U</th>
                 <th className="p-4 font-medium text-right">İşlemler</th>
@@ -209,13 +196,17 @@ function AdminUsers() {
                     <code className="text-white font-mono text-sm">{user.code}</code>
                   </td>
                   <td className="p-4 text-gray-300">{user.adminNotes || '-'}</td>
-                  <td className="p-4">
-                    <span className="px-2 py-1 rounded-lg text-sm" style={{ backgroundColor: 'rgba(229,9,20,0.2)', color: PRIMARY }}>
-                      {user.package || 'N/A'}
-                    </span>
-                  </td>
                   <td className="p-4 text-gray-300">
                     {user.expiresAt ? new Date(user.expiresAt).toLocaleDateString('tr-TR') : '-'}
+                  </td>
+                  <td className="p-4">
+                    {user.expiresAt ? (
+                      <span className="text-sm" style={{ color: user.status === 'active' ? '#10b981' : '#ef4444' }}>
+                        {Math.max(0, Math.ceil((new Date(user.expiresAt) - new Date()) / (1000 * 60 * 60 * 24)))} gün
+                      </span>
+                    ) : (
+                      <span className="text-gray-500">-</span>
+                    )}
                   </td>
                   <td className="p-4">{getStatusBadge(user.status)}</td>
                   <td className="p-4">
@@ -239,16 +230,21 @@ function AdminUsers() {
                   <td className="p-4">
                     <div className="flex items-center justify-end gap-2">
                       <button 
-                        onClick={() => handleExtend(user)}
-                        className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
-                        title="Süre Uzat"
+                        onClick={() => handleSetExpiry(user)}
+                        className="px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors"
+                        style={{ 
+                          backgroundColor: user.status === 'active' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(229,9,20,0.2)',
+                          color: user.status === 'active' ? '#10b981' : PRIMARY
+                        }}
+                        title="Erişim Süresi Tanımla"
                       >
-                        <Calendar className="w-4 h-4" />
+                        <Clock className="w-4 h-4" />
+                        {user.status === 'active' ? 'Uzat' : 'Tanımla'}
                       </button>
                       <button 
-                        onClick={() => handleEdit(user)}
+                        onClick={() => handleM3U(user)}
                         className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
-                        title="Düzenle"
+                        title="M3U Düzenle"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
@@ -281,9 +277,8 @@ function AdminUsers() {
           >
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-white">
-                {modalMode === 'edit' && 'Kullanıcı Düzenle'}
+                {modalMode === 'expiry' && 'Erişim Süresi Tanımla'}
                 {modalMode === 'm3u' && 'M3U Link Tanımla'}
-                {modalMode === 'extend' && 'Süre Uzat'}
               </h2>
               <button 
                 onClick={() => setShowModal(false)}
@@ -293,36 +288,66 @@ function AdminUsers() {
               </button>
             </div>
 
-            <div className="mb-6">
-              <p className="text-gray-400 text-sm">Kullanıcı</p>
-              <code className="text-white font-mono">{selectedUser?.code}</code>
+            <div className="mb-6 p-4 rounded-xl" style={{ backgroundColor: '#1a1a1a' }}>
+              <p className="text-gray-400 text-sm mb-1">Kullanıcı</p>
+              <code className="text-white font-mono text-lg">{selectedUser?.code}</code>
+              {selectedUser?.expiresAt && (
+                <p className="text-sm mt-2" style={{ color: '#f59e0b' }}>
+                  Mevcut bitiş: {new Date(selectedUser.expiresAt).toLocaleDateString('tr-TR')}
+                </p>
+              )}
             </div>
 
-            {modalMode === 'edit' && (
+            {modalMode === 'expiry' && (
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">Paket</label>
-                  <select
-                    value={formData.packageId}
-                    onChange={(e) => setFormData({ ...formData, packageId: e.target.value })}
-                    className="w-full p-3 rounded-xl text-white focus:outline-none"
-                    style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}
-                  >
-                    <option value="">Paket Seçin</option>
-                    {packages.map((pkg) => (
-                      <option key={pkg.id} value={pkg.id}>{pkg.name} - ₺{pkg.price}</option>
-                    ))}
-                  </select>
+                <label className="block text-sm text-gray-400 mb-3">Kullanım Süresi Seçin</label>
+                <div className="grid grid-cols-2 gap-3">
+                  {DURATION_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => setFormData({ ...formData, durationDays: option.value })}
+                      className="relative p-4 rounded-xl text-left transition-all"
+                      style={{
+                        backgroundColor: formData.durationDays === option.value ? `${option.color}20` : '#1a1a1a',
+                        border: `2px solid ${formData.durationDays === option.value ? option.color : '#2a2a2a'}`,
+                      }}
+                    >
+                      {/* Badge */}
+                      {(option.popular || option.best) && (
+                        <span 
+                          className="absolute -top-2 -right-2 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                          style={{ 
+                            backgroundColor: option.best ? PRIMARY : option.color,
+                            color: '#fff'
+                          }}
+                        >
+                          {option.best ? '🔥 En İyi' : '⭐ Popüler'}
+                        </span>
+                      )}
+                      
+                      <div className="flex items-center gap-2 mb-1">
+                        <Clock className="w-4 h-4" style={{ color: option.color }} />
+                        <span className="text-white font-bold">{option.label}</span>
+                      </div>
+                      <p className="text-xs" style={{ color: '#6b7280' }}>{option.description}</p>
+                    </button>
+                  ))}
                 </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">Bitiş Tarihi</label>
-                  <input
-                    type="date"
-                    value={formData.expiryDate}
-                    onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
-                    className="w-full p-3 rounded-xl text-white focus:outline-none"
-                    style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}
-                  />
+
+                {/* Özet */}
+                <div 
+                  className="mt-4 p-4 rounded-xl"
+                  style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)' }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-400">Yeni Bitiş Tarihi:</span>
+                    <span className="text-white font-bold">
+                      {calculateNewExpiry(formData.durationDays)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Bugünden itibaren {formData.durationDays} gün eklenecek
+                  </p>
                 </div>
               </div>
             )}
@@ -338,27 +363,6 @@ function AdminUsers() {
                   className="w-full p-3 rounded-xl text-white focus:outline-none"
                   style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}
                 />
-              </div>
-            )}
-
-            {modalMode === 'extend' && (
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Eklenecek Gün</label>
-                <div className="flex items-center gap-4">
-                  <input
-                    type="number"
-                    value={formData.extendDays}
-                    onChange={(e) => setFormData({ ...formData, extendDays: parseInt(e.target.value) })}
-                    min="1"
-                    max="365"
-                    className="flex-1 p-3 rounded-xl text-white focus:outline-none"
-                    style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}
-                  />
-                  <span className="text-gray-400">gün</span>
-                </div>
-                <p className="text-sm text-gray-500 mt-2">
-                  Yeni bitiş tarihi: {selectedUser?.expiry}
-                </p>
               </div>
             )}
 
