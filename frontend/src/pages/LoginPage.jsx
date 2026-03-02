@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import Logo from '../components/Logo'
 import { Lock, Zap, Smartphone, Eye, EyeOff, AlertCircle, ArrowLeft, UserPlus } from 'lucide-react'
@@ -13,9 +13,10 @@ const BORDER = '#222222'
 
 function LoginPage() {
   const location = useLocation()
+  const navigate = useNavigate()
   const [code, setCode] = useState('')
   const [showCode, setShowCode] = useState(false)
-  const { login, isLoading, error, clearError } = useAuthStore()
+  const { login, isLoading, error, clearError, token } = useAuthStore()
 
   // Auto-fill code from registration
   useEffect(() => {
@@ -26,6 +27,14 @@ function LoginPage() {
       window.history.replaceState({}, document.title)
     }
   }, [location.state])
+
+  // Redirect when token is available (after successful login)
+  useEffect(() => {
+    if (token) {
+      console.log('[Login] Token detected, navigating to /home')
+      navigate('/home', { replace: true })
+    }
+  }, [token, navigate])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -38,10 +47,8 @@ function LoginPage() {
     const result = await login(code.toUpperCase())
     console.log('[Login] Login result:', result)
     
-    if (result.success) {
-      console.log('[Login] Success, redirecting to /home')
-      window.location.href = '/home'
-    } else {
+    // Navigation is handled by useEffect when token changes
+    if (!result.success) {
       console.log('[Login] Failed:', result.error)
     }
   }
