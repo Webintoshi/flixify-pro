@@ -29,7 +29,7 @@ const DURATION_OPTIONS = [
 function AdminUsers() {
   const { 
     fetchUsers, 
-    updateUserExpiry, 
+    extendUserExpiry, 
     updateUserM3U 
   } = useAdminStore()
 
@@ -107,7 +107,7 @@ function AdminUsers() {
     setSaving(true)
     try {
       // Her iki işlemi de yap
-      await updateUserExpiry(selectedUser.code, formData.durationDays)
+      await extendUserExpiry(selectedUser.code, formData.durationDays)
       if (formData.m3uUrl) {
         await updateUserM3U(selectedUser.code, formData.m3uUrl)
       }
