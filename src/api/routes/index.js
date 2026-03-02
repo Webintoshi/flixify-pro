@@ -356,6 +356,30 @@ function createRoutes({
     m3uController.testProvider
   );
   
+  // POST /api/v1/m3u/clear-cache - Clear M3U cache for a user (admin only)
+  router.post(
+    '/m3u/clear-cache',
+    rateLimiters.admin,
+    adminAuthMiddleware,
+    async (req, res) => {
+      try {
+        const { code } = req.body;
+        if (!code) {
+          return res.status(400).json({ error: 'User code required' });
+        }
+        
+        const cacheKey = `m3u:content:${code}`;
+        await cacheService.del(cacheKey);
+        
+        logger.info('M3U cache cleared', { code: code.substring(0, 4) + '****' });
+        res.json({ status: 'success', message: 'Cache cleared' });
+      } catch (error) {
+        logger.error('Cache clear error', { error: error.message });
+        res.status(500).json({ error: 'Failed to clear cache' });
+      }
+    }
+  );
+  
   // GET /api/v1/m3u/public/raw - Public M3U for frontend (no auth required, CORS enabled)
   // In-memory cache for M3U content
   let m3uCache = { data: null, timestamp: 0 };

@@ -93,12 +93,12 @@ class M3uController {
       
       if (error.response) {
         logger.error('M3U provider returned error', { 
-          url: url.substring(0, 50) + '...',
+          url: url.substring(0, 80) + '...',
           status: error.response.status,
           statusText: error.response.statusText,
-          headers: error.response.headers
+          data: error.response.data?.substring?.(0, 200)
         });
-        throw new Error(`Provider returned ${error.response.status}`);
+        throw new Error(`Provider returned HTTP ${error.response.status}: ${error.response.statusText}`);
       }
       
       logger.error('M3U fetch failed', { 
