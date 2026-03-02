@@ -51,6 +51,12 @@ class M3uController {
     logger.debug('Fetching M3U from provider', { url: url.substring(0, 50) + '...' });
     
     try {
+      logger.debug('Starting axios request', { 
+        url: url.substring(0, 60) + '...',
+        timeout: parseInt(process.env.PROXY_TIMEOUT_MS) || 30000,
+        maxRedirects: parseInt(process.env.PROXY_MAX_REDIRECTS) || 5
+      });
+      
       const response = await axios.get(url, {
         timeout: parseInt(process.env.PROXY_TIMEOUT_MS) || 30000,
         maxRedirects: parseInt(process.env.PROXY_MAX_REDIRECTS) || 5,
@@ -59,10 +65,22 @@ class M3uController {
           'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18',
           'Accept': '*/*'
         },
-        validateStatus: (status) => status === 200
+        validateStatus: (status) => {
+          logger.debug('Validating status', { status, url: url.substring(0, 40) });
+          return status >= 200 && status < 300;
+        }
       });
       
       const duration = Date.now() - startTime;
+      
+      logger.debug('Axios response received', { 
+        status: response.status,
+        statusText: response.statusText,
+        contentType: response.headers['content-type'],
+        contentLength: response.headers['content-length'],
+        dataLength: response.data?.length,
+        dataPreview: response.data?.substring(0, 100)
+      });
       
       // Check for empty content
       if (!response.data || response.data.trim().length === 0) {
