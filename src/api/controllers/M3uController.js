@@ -87,14 +87,19 @@ class M3uController {
    */
   proxyM3u = asyncHandler(async (req, res) => {
     const { code } = req.params;
+    
+    logger.info('M3U proxy request START', { code, hasToken: !!req.headers.authorization });
 
     // Get user's M3U URL
     let m3uUrl;
     try {
+      logger.info('Getting user M3U URL', { code });
       const result = await this._getUserM3U.execute({ code });
       m3uUrl = result.url;
+      logger.info('User M3U URL retrieved', { code, url: m3uUrl ? m3uUrl.substring(0, 60) : 'null' });
       
       if (!m3uUrl) {
+        logger.error('No M3U URL assigned', { code });
         return res.status(404).json({
           error: 'Not Found',
           message: 'No M3U URL assigned'
@@ -103,6 +108,7 @@ class M3uController {
       
       this._userM3uUrls.set(code, m3uUrl);
     } catch (error) {
+      logger.error('GetUserM3U failed', { code, error: error.message });
       return res.status(403).json({
         error: 'Forbidden',
         message: error.message
@@ -112,16 +118,26 @@ class M3uController {
     // Check cache
     const cacheKey = `m3u:content:${code}`;
     let m3uContent = await this._cacheService.get(cacheKey);
+    logger.info('Cache check', { code, cacheHit: !!m3uContent });
 
     if (!m3uContent) {
+      logger.info('Fetching from provider', { code, url: m3uUrl.substring(0, 60) });
       try {
         m3uContent = await this._circuitBreaker.fire(m3uUrl);
+        logger.info('Provider fetch SUCCESS', { code, contentLength: m3uContent?.length });
         await this._cacheService.set(cacheKey, m3uContent, 300);
       } catch (error) {
-        logger.error('M3U fetch failed', { error: error.message });
+        logger.error('M3U fetch FAILED', { 
+          code, 
+          error: error.message,
+          errorCode: error.code,
+          responseStatus: error.response?.status,
+          responseData: error.response?.data?.substring?.(0, 200)
+        });
         return res.status(502).json({
           error: 'Bad Gateway',
-          message: error.message
+          message: error.message,
+          details: error.response?.status ? `HTTP ${error.response.status}` : 'Unknown error'
         });
       }
     }
@@ -131,6 +147,7 @@ class M3uController {
       'Cache-Control': 'private, max-age=300'
     });
 
+    logger.info('M3U proxy SUCCESS', { code, contentLength: m3uContent?.length });
     res.send(m3uContent);
   });
 
