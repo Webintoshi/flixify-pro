@@ -361,55 +361,21 @@ function PlayerPage() {
       
       if (!silent) setLoading(true)
       
-      // Backend proxy kullan (CORS ve auth için)
-      const API_URL = import.meta.env.VITE_API_URL || ''
+      // CORS UNBLOCK EKLENTISI GEREKLI - Dogrudan provider'dan cek
+      console.log('[Player] Fetching M3U DIRECT from provider:', user.m3uUrl.substring(0, 60))
       
-      // Get token from zustand store (not localStorage directly)
-      const authStorage = JSON.parse(localStorage.getItem('iptv-auth-storage') || '{}')
-      const token = authStorage.state?.token
-      
-      if (!token) {
-        console.error('[Player] No token found, redirecting to login')
-        window.location.href = '/'
-        return
-      }
-      
-      const fetchUrl = `${API_URL}/m3u/${user.code}.m3u?v=2`
-      
-      console.log('[Player] Fetching M3U from:', fetchUrl)
-      console.log('[Player] User M3U URL:', user.m3uUrl ? 'defined' : 'undefined')
-      console.log('[Player] Token present:', token ? 'yes' : 'no')
-      
-      const response = await fetch(fetchUrl, {
+      const response = await fetch(user.m3uUrl, {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18'
         }
       })
       
       if (!response.ok) {
-        // Detayli hata mesaji
         let errorMsg = `M3U erisim hatasi: ${response.status}`
         if (response.status === 404) {
-          errorMsg = 'M3U playlist bulunamadi (404). M3U URL süresi dolmus veya gecersiz. Lütfen yönetici ile iletisime gecin.'
+          errorMsg = 'M3U playlist bulunamadi (404). Lütfen CORS Unblock eklentisinin kurulu ve aktif oldugundan emin olun.'
         } else if (response.status === 403) {
-          errorMsg = 'M3U erisim izni reddedildi (403). Abonelik suresi dolmus olabilir.'
-        } else if (response.status === 401) {
-          errorMsg = 'Oturum süresi dolmuş. Lütfen tekrar giriş yapın.'
-        } else if (response.status === 502) {
-          // Try to get detailed error from response
-          try {
-            const errorData = await response.json();
-            if (errorData.code === 'M3U_URL_EXPIRED' || errorData.message?.includes('empty')) {
-              errorMsg = 'M3U playlist bos donuyor. Provider hesabi süresi dolmus veya iptal edilmis olabilir. Lütfen yönetici ile iletisime gecin.';
-            } else {
-              errorMsg = 'M3U saglayiciya erisilemiyor (502). ' + (errorData.message || 'Backend sunucu hatasi');
-            }
-          } catch {
-            errorMsg = 'M3U saglayiciya erisilemiyor (502). Backend sunucu hatasi - lütfen yönetici ile iletisime gecin.';
-          }
-        } else if (response.status === 503) {
-          errorMsg = 'M3U saglayici gecici olarak kullanılamıyor (503). Lütfen daha sonra tekrar deneyin.'
+          errorMsg = 'M3U erisim izni reddedildi (403). CORS eklentisi aktif mi kontrol edin.'
         }
         throw new Error(errorMsg)
       }
