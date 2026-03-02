@@ -51,11 +51,15 @@ class M3uController {
     logger.info('Fetching M3U from provider', { url: url.substring(0, 80) });
     
     try {
-      // SIMPLE request - as it was originally working
+      // Request with VLC headers - many providers whitelist VLC player
       const response = await axios.get(url, {
         timeout: 30000,
         maxRedirects: 5,
-        responseType: 'text'
+        responseType: 'text',
+        headers: {
+          'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18',
+          'Accept': '*/*'
+        }
       });
       
       const duration = Date.now() - startTime;
