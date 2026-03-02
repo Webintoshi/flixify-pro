@@ -73,24 +73,25 @@ class M3uController {
         maxRedirects: parseInt(process.env.PROXY_MAX_REDIRECTS) || 5
       });
       
-      // Request with browser-like headers to bypass IP restrictions
+      // Request with browser-like headers - handle both old and new provider formats
+      logger.info('Making request to new provider', { url: url.substring(0, 80) });
+      
       const response = await axios.get(url, {
-        timeout: parseInt(process.env.PROXY_TIMEOUT_MS) || 30000,
+        timeout: 30000,
         maxRedirects: 10,
         responseType: 'text',
+        validateStatus: (status) => status < 500, // Accept 2xx, 3xx, 4xx - reject only 5xx
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.5',
-          'Accept-Encoding': 'gzip, deflate',
-          'Connection': 'keep-alive',
-          'Upgrade-Insecure-Requests': '1'
+          'Accept': '*/*',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Connection': 'keep-alive'
         }
       });
       
       const duration = Date.now() - startTime;
       
-      logger.debug('Axios response received', { 
+      logger.info('Provider response received', { 
         status: response.status,
         statusText: response.statusText,
         contentType: response.headers['content-type'],
@@ -98,6 +99,16 @@ class M3uController {
         dataLength: response.data?.length,
         dataPreview: response.data?.substring(0, 100)
       });
+      
+      // Check for HTTP error status (4xx)
+      if (response.status >= 400) {
+        logger.error('Provider returned error status', {
+          status: response.status,
+          statusText: response.statusText,
+          url: url.substring(0, 80)
+        });
+        throw new Error(`Provider returned HTTP ${response.status}: ${response.statusText}`);
+      }
       
       // Check for empty content
       if (!response.data || response.data.trim().length === 0) {
@@ -262,14 +273,18 @@ class M3uController {
             timeout: 15000,
             maxRedirects: 10,
             responseType: 'text',
+            validateStatus: (status) => status < 500,
             headers: {
               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-              'Accept-Language': 'en-US,en;q=0.5',
-              'Accept-Encoding': 'gzip, deflate',
+              'Accept': '*/*',
+              'Accept-Language': 'en-US,en;q=0.9',
               'Connection': 'keep-alive'
             }
           });
+          
+          if (response.status >= 400) {
+            throw new Error(`Provider returned HTTP ${response.status}`);
+          }
           m3uContent = response.data;
           logger.info('Direct fetch fallback succeeded', { code: code.substring(0, 4) + '****' });
           
