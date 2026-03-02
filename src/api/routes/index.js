@@ -37,7 +37,8 @@ function createRoutes({
       data: {
         service: 'iptv-platform',
         version: process.env.npm_package_version || '1.0.0',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        serverIp: req.socket.localAddress
       }
     });
   });

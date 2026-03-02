@@ -450,8 +450,19 @@ class M3uController {
     logger.info('Testing M3U provider connectivity', { url: testUrl.substring(0, 50) + '...' });
     
     const startTime = Date.now();
+    
+    // Get outbound IP address
+    let outboundIp = 'unknown';
+    try {
+      const { data: ipData } = await axios.get('https://api.ipify.org?format=json', { timeout: 5000 });
+      outboundIp = ipData.ip;
+    } catch (e) {
+      outboundIp = 'failed-to-fetch';
+    }
+    
     const diagnostics = {
       url: testUrl,
+      serverOutboundIp: outboundIp,
       tests: {}
     };
     
