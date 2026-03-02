@@ -204,6 +204,29 @@ class SupabaseUserRepository extends UserRepository {
     }
   }
 
+  /**
+   * Update user fields by ID
+   */
+  async updateById(id, fields) {
+    try {
+      const { data, error } = await this._supabase
+        .from(this._table)
+        .update(fields)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      if (!data) return null;
+
+      logger.info('User fields updated successfully', { id, fields: Object.keys(fields) });
+      return this._toDomain(data);
+    } catch (error) {
+      logger.error('Database error in updateById', { error: error.message, id });
+      throw new Error(`Failed to update user fields: ${error.message}`);
+    }
+  }
+
   async delete(id) {
     try {
       const { error } = await this._supabase

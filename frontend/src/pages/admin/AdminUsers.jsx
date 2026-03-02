@@ -6,12 +6,12 @@ import {
   Plus, 
   Edit2, 
   Trash2,
-  Calendar,
   Clock,
   CheckCircle,
   X,
   Save,
-  Loader2
+  Loader2,
+  Link2
 } from 'lucide-react'
 
 const PRIMARY = '#E50914'
@@ -38,7 +38,6 @@ function AdminUsers() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedUser, setSelectedUser] = useState(null)
   const [showModal, setShowModal] = useState(false)
-  const [modalMode, setModalMode] = useState('view') // expiry, m3u
   const [formData, setFormData] = useState({
     durationDays: 30,
     m3uUrl: ''
@@ -87,35 +86,29 @@ function AdminUsers() {
     if (diffDays < 0) {
       return { days: 0, status: 'expired', color: '#ef4444', text: 'Süresi Doldu' }
     } else if (diffDays <= 7) {
-      return { days: diffDays, status: 'critical', color: '#ef4444', text: `${diffDays} gün kaldı` }
+      return { days: diffDays, status: 'critical', color: '#ef4444', text: `${diffDays} gün` }
     } else if (diffDays <= 30) {
-      return { days: diffDays, status: 'warning', color: '#f59e0b', text: `${diffDays} gün kaldı` }
+      return { days: diffDays, status: 'warning', color: '#f59e0b', text: `${diffDays} gün` }
     } else {
-      return { days: diffDays, status: 'active', color: '#10b981', text: `${diffDays} gün kaldı` }
+      return { days: diffDays, status: 'active', color: '#10b981', text: `${diffDays} gün` }
     }
   }
 
-  const handleSetExpiry = (user) => {
+  const handleConfigureUser = (user) => {
     setSelectedUser(user)
-    setFormData({ ...formData, durationDays: 30 })
-    setModalMode('expiry')
-    setShowModal(true)
-  }
-
-  const handleM3U = (user) => {
-    setSelectedUser(user)
-    setFormData({ ...formData, m3uUrl: user.m3uUrl || '' })
-    setModalMode('m3u')
+    setFormData({ 
+      durationDays: 30, 
+      m3uUrl: user.m3uUrl || '' 
+    })
     setShowModal(true)
   }
 
   const handleSave = async () => {
     setSaving(true)
     try {
-      if (modalMode === 'expiry') {
-        // Bugünden itibaren seçilen gün kadar ekle
-        await updateUserExpiry(selectedUser.code, formData.durationDays)
-      } else if (modalMode === 'm3u') {
+      // Her iki işlemi de yap
+      await updateUserExpiry(selectedUser.code, formData.durationDays)
+      if (formData.m3uUrl) {
         await updateUserM3U(selectedUser.code, formData.m3uUrl)
       }
       await loadData()
@@ -242,40 +235,31 @@ function AdminUsers() {
                   <td className="p-4">{getStatusBadge(user.status)}</td>
                   <td className="p-4">
                     {user.m3uUrl ? (
-                      <button 
-                        onClick={() => handleM3U(user)}
-                        className="text-green-500 hover:text-green-400 flex items-center gap-1 text-sm"
-                      >
+                      <span className="text-green-500 flex items-center gap-1 text-sm">
                         <CheckCircle className="w-4 h-4" />
                         Tanımlı
-                      </button>
+                      </span>
                     ) : (
-                      <button 
-                        onClick={() => handleM3U(user)}
-                        className="text-gray-500 hover:text-white text-sm"
-                      >
-                        Tanımla
-                      </button>
+                      <span className="text-gray-500 text-sm">-</span>
                     )}
                   </td>
                   <td className="p-4">
                     <div className="flex items-center justify-end gap-2">
                       <button 
-                        onClick={() => handleSetExpiry(user)}
-                        className="px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors"
+                        onClick={() => handleConfigureUser(user)}
+                        className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors"
                         style={{ 
                           backgroundColor: user.status === 'active' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(229,9,20,0.2)',
                           color: user.status === 'active' ? '#10b981' : PRIMARY
                         }}
-                        title="Erişim Süresi Tanımla"
                       >
                         <Clock className="w-4 h-4" />
-                        {user.status === 'active' ? 'Uzat' : 'Tanımla'}
+                        {user.status === 'active' ? 'Yenile' : 'Tanımla'}
                       </button>
                       <button 
-                        onClick={() => handleM3U(user)}
+                        onClick={() => handleConfigureUser(user)}
                         className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
-                        title="M3U Düzenle"
+                        title="Düzenle"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
@@ -299,17 +283,16 @@ function AdminUsers() {
         )}
       </div>
 
-      {/* Modal */}
+      {/* Modal - Birleşik Kullanıcı Tanımla */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div 
-            className="w-full max-w-md rounded-2xl p-6"
+            className="w-full max-w-lg rounded-2xl p-6 max-h-[90vh] overflow-y-auto"
             style={{ backgroundColor: BG_SURFACE, border: `1px solid ${BORDER}` }}
           >
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-white">
-                {modalMode === 'expiry' && 'Erişim Süresi Tanımla'}
-                {modalMode === 'm3u' && 'M3U Link Tanımla'}
+                Kullanıcı Tanımla
               </h2>
               <button 
                 onClick={() => setShowModal(false)}
@@ -319,6 +302,7 @@ function AdminUsers() {
               </button>
             </div>
 
+            {/* Kullanıcı Bilgisi */}
             <div className="mb-6 p-4 rounded-xl" style={{ backgroundColor: '#1a1a1a' }}>
               <p className="text-gray-400 text-sm mb-1">Kullanıcı</p>
               <code className="text-white font-mono text-lg">{selectedUser?.code}</code>
@@ -329,8 +313,9 @@ function AdminUsers() {
               )}
             </div>
 
-            {modalMode === 'expiry' && (
-              <div className="space-y-4">
+            <div className="space-y-6">
+              {/* Erişim Süresi Seçimi */}
+              <div>
                 <label className="block text-sm text-gray-400 mb-3">Kullanım Süresi Seçin</label>
                 <div className="grid grid-cols-2 gap-3">
                   {DURATION_OPTIONS.map((option) => (
@@ -365,7 +350,7 @@ function AdminUsers() {
                   ))}
                 </div>
 
-                {/* Özet */}
+                {/* Yeni Bitiş Tarihi Özeti */}
                 <div 
                   className="mt-4 p-4 rounded-xl"
                   style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)' }}
@@ -381,23 +366,34 @@ function AdminUsers() {
                   </p>
                 </div>
               </div>
-            )}
 
-            {modalMode === 'm3u' && (
+              {/* Divider */}
+              <div style={{ borderTop: `1px solid ${BORDER}` }} />
+
+              {/* M3U Link Tanımla */}
               <div>
-                <label className="block text-sm text-gray-400 mb-2">M3U Playlist URL</label>
+                <label className="block text-sm text-gray-400 mb-3 flex items-center gap-2">
+                  <Link2 className="w-4 h-4" />
+                  M3U Playlist URL
+                </label>
                 <input
                   type="url"
                   value={formData.m3uUrl}
                   onChange={(e) => setFormData({ ...formData, m3uUrl: e.target.value })}
                   placeholder="http://example.com/playlist.m3u"
-                  className="w-full p-3 rounded-xl text-white focus:outline-none"
+                  className="w-full p-4 rounded-xl text-white focus:outline-none"
                   style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}
                 />
+                {selectedUser?.m3uUrl && (
+                  <p className="text-xs mt-2" style={{ color: '#6b7280' }}>
+                    Mevcut URL: {selectedUser.m3uUrl.substring(0, 40)}...
+                  </p>
+                )}
               </div>
-            )}
+            </div>
 
-            <div className="flex gap-3 mt-6">
+            {/* Buttons */}
+            <div className="flex gap-3 mt-8">
               <button
                 onClick={() => setShowModal(false)}
                 className="flex-1 py-3 rounded-xl font-medium text-white hover:bg-white/5 transition-colors"

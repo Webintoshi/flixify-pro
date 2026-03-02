@@ -365,7 +365,7 @@ class AdminController {
     }
 
     // Update user M3U URL
-    await this._userRepository.update(user.id, { m3uUrl });
+    await this._userRepository.updateById(user.id, { m3u_url: m3uUrl });
 
     // Invalidate cache
     await this._cacheService.invalidateUser(code);
@@ -404,7 +404,7 @@ class AdminController {
     const newExpiry = new Date(currentExpiry);
     newExpiry.setDate(newExpiry.getDate() + parseInt(days));
 
-    await this._userRepository.update(user.id, { expiresAt: newExpiry });
+    await this._userRepository.updateById(user.id, { expires_at: newExpiry.toISOString() });
 
     // Invalidate cache
     await this._cacheService.invalidateUser(code);
@@ -606,9 +606,9 @@ class AdminController {
       });
     }
 
-    await this._userRepository.update(user.id, {
+    await this._userRepository.updateById(user.id, {
       package: packageId,
-      expiresAt: expiryDate ? new Date(expiryDate) : null
+      expires_at: expiryDate ? new Date(expiryDate).toISOString() : null
     });
 
     await this._cacheService.invalidateUser(code);
@@ -639,7 +639,7 @@ class AdminController {
       });
     }
 
-    await this._userRepository.update(user.id, { m3uUrl });
+    await this._userRepository.updateById(user.id, { m3u_url: m3uUrl });
 
     await this._cacheService.invalidateUser(code);
 
