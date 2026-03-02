@@ -589,6 +589,104 @@ class AdminController {
   });
 
   /**
+   * PUT /admin/users/:code/package
+   * Update user package
+   */
+  updateUserPackage = asyncHandler(async (req, res) => {
+    const { code } = req.params;
+    const { packageId, expiryDate } = req.body;
+
+    const codeVo = Code.create(code);
+    const user = await this._userRepository.findByCode(codeVo);
+
+    if (!user) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found'
+      });
+    }
+
+    await this._userRepository.update(user.id, {
+      package: packageId,
+      expiresAt: expiryDate ? new Date(expiryDate) : null
+    });
+
+    await this._cacheService.invalidateUser(code);
+
+    logger.info('User package updated', { code: codeVo.toMaskedString(), packageId });
+
+    res.json({
+      status: 'success',
+      message: 'User package updated successfully'
+    });
+  });
+
+  /**
+   * PUT /admin/users/:code/m3u
+   * Update user M3U URL
+   */
+  updateUserM3U = asyncHandler(async (req, res) => {
+    const { code } = req.params;
+    const { m3uUrl } = req.body;
+
+    const codeVo = Code.create(code);
+    const user = await this._userRepository.findByCode(codeVo);
+
+    if (!user) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found'
+      });
+    }
+
+    await this._userRepository.update(user.id, { m3uUrl });
+
+    await this._cacheService.invalidateUser(code);
+
+    logger.info('User M3U updated', { code: codeVo.toMaskedString() });
+
+    res.json({
+      status: 'success',
+      message: 'User M3U URL updated successfully'
+    });
+  });
+
+  /**
+   * POST /admin/users/:code/extend
+   * Extend user expiry
+   */
+  extendUserExpiry = asyncHandler(async (req, res) => {
+    const { code } = req.params;
+    const { days } = req.body;
+
+    const codeVo = Code.create(code);
+    const user = await this._userRepository.findByCode(codeVo);
+
+    if (!user) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found'
+      });
+    }
+
+    const currentExpiry = user.expiresAt ? new Date(user.expiresAt) : new Date();
+    const newExpiry = new Date(currentExpiry);
+    newExpiry.setDate(newExpiry.getDate() + parseInt(days));
+
+    await this._userRepository.update(user.id, { expiresAt: newExpiry });
+
+    await this._cacheService.invalidateUser(code);
+
+    logger.info('User expiry extended', { code: codeVo.toMaskedString(), days, newExpiry });
+
+    res.json({
+      status: 'success',
+      message: `User expiry extended by ${days} days`,
+      data: { newExpiry: newExpiry.toISOString() }
+    });
+  });
+
+  /**
    * PUT /admin/packages/:id
    * Update package
    */
