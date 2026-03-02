@@ -82,8 +82,8 @@ export const useAuthStore = create(
         return false
       },
 
-      // Check if token is valid (exists and not expired)
-      isAuthenticated: () => {
+      // Get authentication status (getter, not function)
+      get isAuthenticated() {
         return !!get().token
       },
 

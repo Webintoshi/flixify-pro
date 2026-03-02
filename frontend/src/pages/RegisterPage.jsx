@@ -11,7 +11,7 @@ const BG_CARD = '#1a1a1a';
 
 function RegisterPage() {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuthStore();
+  const isAuthenticated = useAuthStore(state => state.isAuthenticated);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
