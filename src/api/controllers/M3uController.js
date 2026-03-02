@@ -73,18 +73,11 @@ class M3uController {
         maxRedirects: parseInt(process.env.PROXY_MAX_REDIRECTS) || 5
       });
       
+      // Simple request - let axios handle redirects automatically
       const response = await axios.get(url, {
         timeout: parseInt(process.env.PROXY_TIMEOUT_MS) || 30000,
-        maxRedirects: parseInt(process.env.PROXY_MAX_REDIRECTS) || 5,
-        responseType: 'text',
-        headers: {
-          'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18',
-          'Accept': '*/*'
-        },
-        validateStatus: (status) => {
-          logger.debug('Validating status', { status, url: url.substring(0, 40) });
-          return status >= 200 && status < 300;
-        }
+        maxRedirects: 10,
+        responseType: 'text'
       });
       
       const duration = Date.now() - startTime;
@@ -258,14 +251,9 @@ class M3uController {
             urlLength: m3uUrl.length
           });
           const response = await axios.get(m3uUrl, {
-            timeout: 15000, // Shorter timeout for fallback
-            maxRedirects: 3,
-            responseType: 'text',
-            headers: {
-              'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18',
-              'Accept': '*/*'
-            },
-            validateStatus: (status) => status === 200
+            timeout: 15000,
+            maxRedirects: 10,
+            responseType: 'text'
           });
           m3uContent = response.data;
           logger.info('Direct fetch fallback succeeded', { code: code.substring(0, 4) + '****' });
