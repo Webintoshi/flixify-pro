@@ -24,19 +24,38 @@ class SupabaseUserRepository extends UserRepository {
 
   /**
    * Map database row to domain entity
+   * 
+   * CRITICAL: Wraps User.reconstitute in try-catch to handle data integrity issues
+   * (e.g., active users without M3U URL in database). Returns null for invalid rows
+   * to prevent 500 errors, but logs the issue for data cleanup.
    */
   _toDomain(data) {
     if (!data) return null;
-    return User.reconstitute({
-      id: data.id,
-      code: data.code,
-      status: data.status,
-      m3uUrl: data.m3u_url,
-      expiresAt: data.expires_at,
-      adminNotes: data.admin_notes,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at
-    });
+    
+    try {
+      return User.reconstitute({
+        id: data.id,
+        code: data.code,
+        status: data.status,
+        m3uUrl: data.m3u_url,
+        expiresAt: data.expires_at,
+        adminNotes: data.admin_notes,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      });
+    } catch (error) {
+      // Log data integrity issue but don't crash the entire request
+      logger.error('Data integrity error: Failed to reconstitute user from database', {
+        userId: data.id,
+        code: data.code?.substring(0, 4) + '****',
+        status: data.status,
+        hasM3uUrl: !!data.m3u_url,
+        error: error.message
+      });
+      
+      // Return null for this user - will be filtered out from results
+      return null;
+    }
   }
 
   /**
@@ -104,8 +123,20 @@ class SupabaseUserRepository extends UserRepository {
 
       if (error) throw error;
 
+      // Filter out nulls (users that failed reconstitution due to data integrity issues)
+      const users = data.map(row => this._toDomain(row)).filter(u => u !== null);
+      
+      // Log warning if some users were filtered out
+      if (users.length < data.length) {
+        logger.warn('Some users were filtered out due to data integrity issues', {
+          totalInDb: data.length,
+          validUsers: users.length,
+          filteredOut: data.length - users.length
+        });
+      }
+
       return {
-        users: data.map(row => this._toDomain(row)),
+        users,
         total: count || 0
       };
     } catch (error) {
@@ -125,7 +156,7 @@ class SupabaseUserRepository extends UserRepository {
 
       if (error) throw error;
 
-      return data.map(row => this._toDomain(row));
+      return data.map(row => this._toDomain(row)).filter(u => u !== null);
     } catch (error) {
       logger.error('Database error in findByStatus', { error: error.message, status });
       throw new Error(`Failed to find users by status: ${error.message}`);
@@ -145,7 +176,7 @@ class SupabaseUserRepository extends UserRepository {
 
       if (error) throw error;
 
-      return data.map(row => this._toDomain(row));
+      return data.map(row => this._toDomain(row)).filter(u => u !== null);
     } catch (error) {
       logger.error('Database error in findExpired', { error: error.message });
       throw new Error(`Failed to find expired users: ${error.message}`);
@@ -303,7 +334,7 @@ class SupabaseUserRepository extends UserRepository {
 
       if (error) throw error;
 
-      return data.map(row => this._toDomain(row));
+      return data.map(row => this._toDomain(row)).filter(u => u !== null);
     } catch (error) {
       logger.error('Database error in findRecent', { error: error.message, days });
       return [];

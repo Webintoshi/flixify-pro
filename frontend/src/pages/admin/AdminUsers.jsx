@@ -35,6 +35,7 @@ function AdminUsers() {
 
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedUser, setSelectedUser] = useState(null)
   const [showModal, setShowModal] = useState(false)
@@ -49,12 +50,15 @@ function AdminUsers() {
   }, [])
 
   const loadData = async () => {
+    setLoading(true)
+    setError(null)
     try {
       const usersData = await fetchUsers()
       const users = usersData.data?.users || usersData.users || []
       setUsers(users)
-    } catch (error) {
-      console.error('Data load error:', error)
+    } catch (err) {
+      console.error('Data load error:', err)
+      setError(err.message || 'Kullanıcılar yüklenirken bir hata oluştu')
       setUsers([])
     } finally {
       setLoading(false)

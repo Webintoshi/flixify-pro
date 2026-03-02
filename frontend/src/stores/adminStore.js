@@ -92,7 +92,20 @@ export const useAdminStore = create(
           const response = await fetch(`${API_URL}/admin/users`, {
             headers: { 'Authorization': `Bearer ${adminToken}` }
           })
-          if (!response.ok) throw new Error('Kullanıcılar getirilemedi')
+          
+          if (!response.ok) {
+            // Try to parse error response for detailed message
+            let errorMessage = 'Kullanıcılar getirilemedi'
+            try {
+              const errorData = await response.json()
+              errorMessage = errorData.detail || errorData.message || errorMessage
+            } catch (parseError) {
+              // If parsing fails, use status text
+              errorMessage = `HTTP ${response.status}: ${response.statusText}`
+            }
+            throw new Error(errorMessage)
+          }
+          
           return await response.json()
         } catch (error) {
           console.error('Fetch users error:', error)
