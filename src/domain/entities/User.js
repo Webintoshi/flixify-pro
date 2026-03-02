@@ -47,7 +47,7 @@ class User {
     return new User({
       id: null,
       code,
-      status: UserStatus.PENDING,
+      status: UserStatus.ACTIVE,
       adminNotes
     });
   }
@@ -63,10 +63,7 @@ class User {
    * Domain invariant validation
    */
   _validateInvariants() {
-    // Active users must have M3U URL
-    if (this._status.equals(UserStatus.ACTIVE) && !this._m3uUrl) {
-      throw new Error('Active users must have an M3U URL assigned');
-    }
+    // Note: Active users can exist without M3U until they purchase a package
 
     // Check expiration for active users
     if (this._status.equals(UserStatus.ACTIVE) && this._expiresAt) {

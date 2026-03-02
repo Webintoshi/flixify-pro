@@ -336,6 +336,25 @@ export const useAdminStore = create(
         }
       },
 
+      // Users - Delete
+      deleteUser: async (userCode) => {
+        const { adminToken } = get()
+        try {
+          const response = await fetch(`${API_URL}/admin/users/${userCode}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${adminToken}` }
+          })
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}))
+            throw new Error(errorData.message || 'Kullanıcı silinemedi')
+          }
+          return await response.json()
+        } catch (error) {
+          console.error('Delete user error:', error)
+          throw error
+        }
+      },
+
       // Analytics
       fetchAnalytics: async () => {
         const { adminToken } = get()

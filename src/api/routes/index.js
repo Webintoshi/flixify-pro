@@ -23,6 +23,7 @@ function createRoutes({
   authMiddleware,
   adminAuthMiddleware,
   optionalAuthMiddleware,
+  subscriptionCheckMiddleware,
   rateLimiters,
   validators,
   userRepository
@@ -332,10 +333,12 @@ function createRoutes({
   // M3U PROXY ROUTES
   // =============================================================================
   
-  // GET /api/v1/m3u/:code.m3u - Real M3U proxy
+  // GET /api/v1/m3u/:code.m3u - Real M3U proxy (requires subscription)
   router.get(
     '/m3u/:code.m3u',
     rateLimiters.m3u,
+    authMiddleware,
+    subscriptionCheckMiddleware,
     validators.m3uProxy,
     m3uController.proxyM3u  // Real M3U from provider
   );

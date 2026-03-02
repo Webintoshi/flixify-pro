@@ -71,6 +71,7 @@ class SupabaseUserRepository extends UserRepository {
         .from(this._table)
         .select('*')
         .eq('id', id)
+        .is('deleted_at', null)  // Exclude soft-deleted users
         .single();
 
       if (error) {
@@ -93,6 +94,7 @@ class SupabaseUserRepository extends UserRepository {
         .from(this._table)
         .select('*')
         .eq('code', codeString)
+        .is('deleted_at', null)  // Exclude soft-deleted users
         .single();
 
       if (error) {
@@ -107,11 +109,16 @@ class SupabaseUserRepository extends UserRepository {
     }
   }
 
-  async findAll({ limit = 50, offset = 0, status = null } = {}) {
+  async findAll({ limit = 50, offset = 0, status = null, includeDeleted = false } = {}) {
     try {
       let query = this._supabase
         .from(this._table)
         .select('*', { count: 'exact' });
+
+      // Exclude soft-deleted users by default
+      if (!includeDeleted) {
+        query = query.is('deleted_at', null);
+      }
 
       if (status) {
         query = query.eq('status', status);

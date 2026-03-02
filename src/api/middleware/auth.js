@@ -231,8 +231,69 @@ function createAdminAuthMiddleware(config) {
   };
 }
 
+/**
+ * Create subscription check middleware
+ * Validates user has active subscription and M3U URL
+ */
+function createSubscriptionCheckMiddleware(userRepository) {
+  return async (req, res, next) => {
+    try {
+      const { code } = req.user;
+      
+      // Get full user details from database
+      const user = await userRepository.findByCode(code);
+      
+      if (!user) {
+        return res.status(404).json({
+          error: 'Not Found',
+          message: 'User not found',
+          code: 'USER_NOT_FOUND'
+        });
+      }
+      
+      // Check if user has valid subscription
+      const now = new Date();
+      const hasValidSubscription = user.expiresAt && new Date(user.expiresAt) > now;
+      const hasM3U = !!user.m3uUrl;
+      
+      if (!hasValidSubscription || !hasM3U) {
+        logger.debug('Subscription check failed', {
+          codeMasked: code.substring(0, 4) + '****',
+          hasValidSubscription,
+          hasM3U
+        });
+        
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'Active subscription and M3U URL required',
+          code: 'SUBSCRIPTION_REQUIRED',
+          data: {
+            hasValidSubscription,
+            hasM3U,
+            requiresPayment: !hasValidSubscription,
+            requiresM3U: !hasM3U
+          }
+        });
+      }
+      
+      // Attach full user info to request
+      req.userDetails = user;
+      
+      next();
+    } catch (error) {
+      logger.error('Subscription check error', { error: error.message });
+      return res.status(500).json({
+        error: 'Internal Server Error',
+        message: 'Failed to check subscription',
+        code: 'SUBSCRIPTION_CHECK_ERROR'
+      });
+    }
+  };
+}
+
 module.exports = {
   createAuthMiddleware,
   createOptionalAuthMiddleware,
-  createAdminAuthMiddleware
+  createAdminAuthMiddleware,
+  createSubscriptionCheckMiddleware
 };

@@ -11,7 +11,8 @@ import {
   X,
   Save,
   Loader2,
-  Link2
+  Link2,
+  AlertTriangle
 } from 'lucide-react'
 
 const PRIMARY = '#E50914'
@@ -30,7 +31,8 @@ function AdminUsers() {
   const { 
     fetchUsers, 
     extendUserExpiry, 
-    updateUserM3U 
+    updateUserM3U,
+    deleteUser
   } = useAdminStore()
 
   const [users, setUsers] = useState([])
@@ -39,11 +41,14 @@ function AdminUsers() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedUser, setSelectedUser] = useState(null)
   const [showModal, setShowModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [userToDelete, setUserToDelete] = useState(null)
   const [formData, setFormData] = useState({
     durationDays: 30,
     m3uUrl: ''
   })
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -107,6 +112,28 @@ function AdminUsers() {
     setShowModal(true)
   }
 
+  const handleDeleteClick = (user) => {
+    setUserToDelete(user)
+    setShowDeleteModal(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!userToDelete) return
+    
+    setDeleting(true)
+    try {
+      await deleteUser(userToDelete.code)
+      setShowDeleteModal(false)
+      setUserToDelete(null)
+      await loadData()
+    } catch (error) {
+      console.error('Delete error:', error)
+      alert('Kullanıcı silinirken hata oluştu: ' + error.message)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   const handleSave = async () => {
     setSaving(true)
     try {
@@ -146,6 +173,24 @@ function AdminUsers() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-4 border-red-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 space-y-4">
+        <div className="text-red-500 text-center">
+          <p className="text-lg font-medium mb-2">Hata Oluştu</p>
+          <p className="text-gray-400">{error}</p>
+        </div>
+        <button 
+          onClick={loadData}
+          className="px-4 py-2 rounded-xl font-medium text-white flex items-center gap-2"
+          style={{ backgroundColor: PRIMARY }}
+        >
+          Tekrar Dene
+        </button>
       </div>
     )
   }
@@ -268,6 +313,7 @@ function AdminUsers() {
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button 
+                        onClick={() => handleDeleteClick(user)}
                         className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-red-500 transition-colors"
                         title="Sil"
                       >
@@ -281,8 +327,15 @@ function AdminUsers() {
           </table>
         </div>
         {filteredUsers.length === 0 && (
-          <div className="p-8 text-center text-gray-500">
-            Kullanıcı bulunamadı
+          <div className="p-8 text-center">
+            <p className="text-gray-500 mb-4">Kullanıcı bulunamadı</p>
+            <button 
+              onClick={loadData}
+              className="px-4 py-2 rounded-xl font-medium text-white text-sm"
+              style={{ backgroundColor: '#2a2a2a' }}
+            >
+              Yenile
+            </button>
           </div>
         )}
       </div>
@@ -417,6 +470,74 @@ function AdminUsers() {
                   <Save className="w-5 h-5" />
                 )}
                 Kaydet
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && userToDelete && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div 
+            className="w-full max-w-md rounded-2xl p-6"
+            style={{ backgroundColor: BG_SURFACE, border: `1px solid ${BORDER}` }}
+          >
+            <div className="flex items-center gap-4 mb-6">
+              <div 
+                className="w-12 h-12 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: 'rgba(239, 68, 68, 0.2)' }}
+              >
+                <AlertTriangle className="w-6 h-6" style={{ color: '#ef4444' }} />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">Kullanıcıyı Sil</h2>
+                <p className="text-gray-400 text-sm">Bu işlem geri alınamaz</p>
+              </div>
+            </div>
+
+            <div 
+              className="p-4 rounded-xl mb-6"
+              style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}
+            >
+              <p className="text-gray-400 text-sm mb-1">Silinecek Kullanıcı</p>
+              <code className="text-white font-mono text-lg">{userToDelete.code}</code>
+              <p className="text-sm text-gray-500 mt-2">
+                Durum: <span className="capitalize">{userToDelete.status}</span>
+                {userToDelete.expiresAt && (
+                  <span> • Bitiş: {new Date(userToDelete.expiresAt).toLocaleDateString('tr-TR')}</span>
+                )}
+              </p>
+            </div>
+
+            <p className="text-gray-300 mb-6">
+              Bu kullanıcıyı kalıcı olarak silmek istediğinize emin misiniz? Tüm kullanıcı verileri ve geçmiş kayıtları silinecektir.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false)
+                  setUserToDelete(null)
+                }}
+                disabled={deleting}
+                className="flex-1 py-3 rounded-xl font-medium text-white hover:bg-white/5 transition-colors"
+                style={{ backgroundColor: '#2a2a2a' }}
+              >
+                İptal
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={deleting}
+                className="flex-1 py-3 rounded-xl font-medium text-white flex items-center justify-center gap-2"
+                style={{ backgroundColor: '#ef4444' }}
+              >
+                {deleting ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Trash2 className="w-5 h-5" />
+                )}
+                {deleting ? 'Siliniyor...' : 'Evet, Sil'}
               </button>
             </div>
           </div>
