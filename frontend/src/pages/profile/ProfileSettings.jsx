@@ -60,7 +60,7 @@ function ProfileSettings() {
   return (
     <div className="min-h-screen pb-20" style={{ backgroundColor: BG_DARK }}>
       {/* Header */}
-      <div className="px-6 py-8">
+      <div className="px-6 py-4">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
             <Settings className="w-8 h-8" style={{ color: PRIMARY }} />
