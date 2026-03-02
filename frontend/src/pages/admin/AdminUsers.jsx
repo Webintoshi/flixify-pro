@@ -102,14 +102,14 @@ function AdminUsers() {
     setSaving(true)
     try {
       if (modalMode === 'edit') {
-        await updateUserPackage(selectedUser.id, {
+        await updateUserPackage(selectedUser.code, {
           packageId: formData.packageId,
           expiryDate: formData.expiryDate
         })
       } else if (modalMode === 'm3u') {
-        await updateUserM3U(selectedUser.id, formData.m3uUrl)
+        await updateUserM3U(selectedUser.code, formData.m3uUrl)
       } else if (modalMode === 'extend') {
-        await extendUserExpiry(selectedUser.id, formData.extendDays)
+        await extendUserExpiry(selectedUser.code, formData.extendDays)
       }
       await loadData()
       setShowModal(false)

@@ -100,10 +100,10 @@ export const useAdminStore = create(
         }
       },
 
-      updateUserPackage: async (userId, packageData) => {
+      updateUserPackage: async (userCode, packageData) => {
         const { adminToken } = get()
         try {
-          const response = await fetch(`${API_URL}/admin/users/${userId}/package`, {
+          const response = await fetch(`${API_URL}/admin/users/${userCode}/package`, {
             method: 'PUT',
             headers: { 
               'Authorization': `Bearer ${adminToken}`,
@@ -119,10 +119,10 @@ export const useAdminStore = create(
         }
       },
 
-      extendUserExpiry: async (userId, days) => {
+      extendUserExpiry: async (userCode, days) => {
         const { adminToken } = get()
         try {
-          const response = await fetch(`${API_URL}/admin/users/${userId}/extend`, {
+          const response = await fetch(`${API_URL}/admin/users/${userCode}/extend`, {
             method: 'POST',
             headers: { 
               'Authorization': `Bearer ${adminToken}`,
@@ -138,10 +138,10 @@ export const useAdminStore = create(
         }
       },
 
-      updateUserM3U: async (userId, m3uUrl) => {
+      updateUserM3U: async (userCode, m3uUrl) => {
         const { adminToken } = get()
         try {
-          const response = await fetch(`${API_URL}/admin/users/${userId}/m3u`, {
+          const response = await fetch(`${API_URL}/admin/users/${userCode}/m3u`, {
             method: 'PUT',
             headers: { 
               'Authorization': `Bearer ${adminToken}`,

@@ -180,6 +180,33 @@ function createRoutes({
     adminController.updateNotes
   );
 
+  // PUT /api/v1/admin/users/:code/package - Update user package
+  router.put(
+    '/admin/users/:code/package',
+    rateLimiters.admin,
+    adminAuthMiddleware,
+    validators.m3uProxy,
+    adminController.updatePackage
+  );
+
+  // PUT /api/v1/admin/users/:code/m3u - Update user M3U URL
+  router.put(
+    '/admin/users/:code/m3u',
+    rateLimiters.admin,
+    adminAuthMiddleware,
+    validators.m3uProxy,
+    adminController.updateM3U
+  );
+
+  // POST /api/v1/admin/users/:code/extend - Extend user expiry
+  router.post(
+    '/admin/users/:code/extend',
+    rateLimiters.admin,
+    adminAuthMiddleware,
+    validators.m3uProxy,
+    adminController.extendUserExpiry
+  );
+
   // DELETE /api/v1/admin/users/:code - Delete user
   router.delete(
     '/admin/users/:code',
