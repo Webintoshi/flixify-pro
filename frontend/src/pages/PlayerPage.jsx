@@ -875,7 +875,11 @@ function PlayerPage() {
                 boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'
               }}
             >
-              <div className="aspect-video bg-black relative">
+              <div 
+                className="aspect-video bg-black relative"
+                onMouseMove={handleMouseMove}
+                onClick={() => !showControls && setShowControls(true)}
+              >
                 {loading && (
                   <div className="absolute inset-0 flex items-center justify-center z-10">
                     <div className="text-center">
@@ -913,8 +917,11 @@ function PlayerPage() {
                   }}
                 />
                 
-                {/* Controls */}
-                <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
+                {/* Controls - Auto-hide */}
+                <div 
+                  className={`absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}
+                  onMouseMove={handleMouseMove}
+                >
                   <div className="flex items-center justify-between">
                     <button 
                       onClick={toggleMute}
