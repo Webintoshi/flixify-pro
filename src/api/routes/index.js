@@ -143,16 +143,7 @@ function createRoutes({
     adminController.listUsers
   );
 
-  // GET /api/v1/admin/users/:code - Get user details
-  router.get(
-    '/admin/users/:code',
-    rateLimiters.admin,
-    adminAuthMiddleware,
-    validators.m3uProxy,
-    adminController.getUser
-  );
-
-  // PUT /api/v1/admin/users/:code/activate - Activate user
+  // PUT /api/v1/admin/users/:code/activate - Activate user (must be BEFORE /:code)
   router.put(
     '/admin/users/:code/activate',
     rateLimiters.admin,
@@ -161,7 +152,7 @@ function createRoutes({
     adminController.activateUser
   );
 
-  // PUT /api/v1/admin/users/:code/suspend - Suspend user
+  // PUT /api/v1/admin/users/:code/suspend - Suspend user (must be BEFORE /:code)
   router.put(
     '/admin/users/:code/suspend',
     rateLimiters.admin,
@@ -170,7 +161,7 @@ function createRoutes({
     adminController.suspendUser
   );
 
-  // PUT /api/v1/admin/users/:code/notes - Update admin notes
+  // PUT /api/v1/admin/users/:code/notes - Update admin notes (must be BEFORE /:code)
   router.put(
     '/admin/users/:code/notes',
     rateLimiters.admin,
@@ -180,7 +171,7 @@ function createRoutes({
     adminController.updateNotes
   );
 
-  // PUT /api/v1/admin/users/:code/package - Update user package
+  // PUT /api/v1/admin/users/:code/package - Update user package (must be BEFORE /:code)
   router.put(
     '/admin/users/:code/package',
     rateLimiters.admin,
@@ -189,7 +180,7 @@ function createRoutes({
     adminController.updateUserPackage
   );
 
-  // PUT /api/v1/admin/users/:code/m3u - Update user M3U URL
+  // PUT /api/v1/admin/users/:code/m3u - Update user M3U URL (must be BEFORE /:code)
   router.put(
     '/admin/users/:code/m3u',
     rateLimiters.admin,
@@ -198,7 +189,7 @@ function createRoutes({
     adminController.updateUserM3U
   );
 
-  // POST /api/v1/admin/users/:code/extend - Extend user expiry
+  // POST /api/v1/admin/users/:code/extend - Extend user expiry (must be BEFORE /:code)
   router.post(
     '/admin/users/:code/extend',
     rateLimiters.admin,
@@ -207,13 +198,22 @@ function createRoutes({
     adminController.extendUserExpiry
   );
 
-  // DELETE /api/v1/admin/users/:code - Delete user
+  // DELETE /api/v1/admin/users/:code - Delete user (must be BEFORE /:code)
   router.delete(
     '/admin/users/:code',
     rateLimiters.admin,
     adminAuthMiddleware,
     validators.m3uProxy,
     adminController.deleteUser
+  );
+
+  // GET /api/v1/admin/users/:code - Get user details (must be LAST)
+  router.get(
+    '/admin/users/:code',
+    rateLimiters.admin,
+    adminAuthMiddleware,
+    validators.m3uProxy,
+    adminController.getUser
   );
 
   // GET /api/v1/admin/stats - Get statistics
