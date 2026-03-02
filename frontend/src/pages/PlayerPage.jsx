@@ -396,6 +396,10 @@ function PlayerPage() {
           errorMsg = 'M3U erisim izni reddedildi (403). Abonelik suresi dolmus olabilir.'
         } else if (response.status === 401) {
           errorMsg = 'Oturum süresi dolmuş. Lütfen tekrar giriş yapın.'
+        } else if (response.status === 502) {
+          errorMsg = 'M3U saglayiciya erisilemiyor (502). Backend sunucu hatasi - lütfen yönetici ile iletisime gecin.'
+        } else if (response.status === 503) {
+          errorMsg = 'M3U saglayici gecici olarak kullanılamıyor (503). Lütfen daha sonra tekrar deneyin.'
         }
         throw new Error(errorMsg)
       }
