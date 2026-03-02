@@ -49,51 +49,39 @@ class M3uController {
   async _fetchM3u(url) {
     const startTime = Date.now();
     
-    // Use Turkey proxy to bypass IP restrictions
-    const PROXY_URL = 'http://5.175.136.42:3000/';
-    const proxyTargetUrl = PROXY_URL + encodeURIComponent(url);
-    
-    logger.info('Fetching M3U via Turkey proxy', { 
-      originalUrl: url.substring(0, 80),
-      proxyUrl: proxyTargetUrl,
-      proxyHost: '5.175.136.42',
-      proxyPort: 3000
+    logger.info('Fetching M3U directly from provider', { 
+      url: url.substring(0, 80)
     });
     
     try {
-      const response = await axios.get(proxyTargetUrl, {
-        timeout: 60000,
+      const response = await axios.get(url, {
+        timeout: 30000,
+        maxRedirects: 5,
         responseType: 'text',
-        validateStatus: () => true // Accept any status to see what proxy returns
+        headers: {
+          'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18',
+          'Accept': '*/*'
+        }
       });
       
       const duration = Date.now() - startTime;
       
-      logger.info('Proxy response received', { 
+      logger.info('M3U fetched successfully', { 
         status: response.status,
-        statusText: response.statusText,
         contentLength: response.data?.length,
-        dataPreview: response.data?.substring(0, 200),
         duration
       });
       
-      // Check if proxy returned error
-      if (response.status >= 400) {
-        throw new Error(`Proxy returned HTTP ${response.status}: ${response.data}`);
-      }
-      
-      // Check for empty content
       if (!response.data || response.data.trim().length === 0) {
         throw new Error('Provider returned empty playlist');
       }
       
       return response.data;
     } catch (error) {
-      logger.error('M3U fetch error via proxy', { 
+      logger.error('M3U fetch error', { 
         error: error.message,
         code: error.code,
-        responseStatus: error.response?.status,
-        proxyUrl: proxyTargetUrl
+        responseStatus: error.response?.status
       });
       throw error;
     }
