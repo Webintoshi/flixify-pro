@@ -70,7 +70,20 @@ function AdminDashboard() {
     }
   }
 
-  const displayStats = stats || {}
+  const displayStats = stats || {
+    totalUsers: 0,
+    activeUsers: 0,
+    expiredUsers: 0,
+    pendingUsers: 0,
+    suspendedUsers: 0,
+    totalPackages: 0,
+    totalPayments: 0,
+    pendingPayments: 0,
+    todayRevenue: 0,
+    monthlyRevenue: 0,
+    recentUsers: [],
+    recentPayments: []
+  }
 
   const statCards = [
     { 
@@ -89,17 +102,17 @@ function AdminDashboard() {
     },
     { 
       title: 'Bekleyen Ödemeler', 
-      value: displayStats.pendingPayments, 
+      value: displayStats.pendingPayments || 0, 
       icon: CreditCard, 
       color: '#f59e0b',
       subtitle: 'Onay Bekliyor'
     },
     { 
       title: 'Aylık Gelir', 
-      value: `₺${displayStats.monthlyRevenue.toLocaleString()}`, 
+      value: `₺${(displayStats.monthlyRevenue || 0).toLocaleString()}`, 
       icon: TrendingUp, 
       color: '#8b5cf6',
-      subtitle: `Bugün: ₺${displayStats.todayRevenue.toLocaleString()}`
+      subtitle: `Bugün: ₺${(displayStats.todayRevenue || 0).toLocaleString()}`
     },
   ]
 

@@ -189,7 +189,7 @@ function AdminAnalytics() {
               style={{ backgroundColor: '#1a1a1a' }}
             >
               <p className="text-gray-400 text-sm mb-1">{method.name}</p>
-              <p className="text-2xl font-bold text-white mb-2">₺{method.amount.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-white mb-2">₺{(method.amount || 0).toLocaleString()}</p>
               <p className="text-sm" style={{ color: PRIMARY }}>{method.count} işlem</p>
             </div>
           ))}
@@ -228,7 +228,7 @@ function AdminAnalytics() {
                     </span>
                   </td>
                   <td className="p-4 text-white font-mono">{user.code}</td>
-                  <td className="p-4 text-white font-bold">₺{user.totalSpent.toLocaleString()}</td>
+                  <td className="p-4 text-white font-bold">₺{(user.totalSpent || 0).toLocaleString()}</td>
                   <td className="p-4 text-gray-400">{user.payments} ödeme</td>
                 </tr>
               ))}

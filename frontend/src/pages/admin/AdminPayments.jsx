@@ -147,7 +147,7 @@ function AdminPayments() {
         <StatCard title="Toplam" value={stats.total} color="#6b7280" />
         <StatCard title="Bekleyen" value={stats.pending} color="#f59e0b" />
         <StatCard title="Onaylanan" value={stats.approved} color="#10b981" />
-        <StatCard title="Toplam Gelir" value={`₺${stats.totalAmount.toLocaleString()}`} color={PRIMARY} />
+        <StatCard title="Toplam Gelir" value={`₺${(stats.totalAmount || 0).toLocaleString()}`} color={PRIMARY} />
       </div>
 
       {/* Filters */}
