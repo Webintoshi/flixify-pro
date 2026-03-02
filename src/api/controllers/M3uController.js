@@ -63,6 +63,17 @@ class M3uController {
       });
       
       const duration = Date.now() - startTime;
+      
+      // Check for empty content
+      if (!response.data || response.data.trim().length === 0) {
+        logger.error('M3U provider returned empty playlist', { 
+          url: url.substring(0, 50) + '...',
+          status: response.status,
+          contentLength: response.headers['content-length']
+        });
+        throw new Error('Provider returned empty playlist - account may be expired or inactive');
+      }
+      
       logger.info('M3U fetched successfully from provider', { 
         duration,
         contentLength: response.data?.length,

@@ -397,7 +397,17 @@ function PlayerPage() {
         } else if (response.status === 401) {
           errorMsg = 'Oturum süresi dolmuş. Lütfen tekrar giriş yapın.'
         } else if (response.status === 502) {
-          errorMsg = 'M3U saglayiciya erisilemiyor (502). Backend sunucu hatasi - lütfen yönetici ile iletisime gecin.'
+          // Try to get detailed error from response
+          try {
+            const errorData = await response.json();
+            if (errorData.code === 'M3U_URL_EXPIRED' || errorData.message?.includes('empty')) {
+              errorMsg = 'M3U playlist bos donuyor. Provider hesabi süresi dolmus veya iptal edilmis olabilir. Lütfen yönetici ile iletisime gecin.';
+            } else {
+              errorMsg = 'M3U saglayiciya erisilemiyor (502). ' + (errorData.message || 'Backend sunucu hatasi');
+            }
+          } catch {
+            errorMsg = 'M3U saglayiciya erisilemiyor (502). Backend sunucu hatasi - lütfen yönetici ile iletisime gecin.';
+          }
         } else if (response.status === 503) {
           errorMsg = 'M3U saglayici gecici olarak kullanılamıyor (503). Lütfen daha sonra tekrar deneyin.'
         }
