@@ -130,6 +130,9 @@ function PlayerPage() {
   const videoUrl = searchParams.get('url')
   const videoTitle = searchParams.get('title')
   
+  // Get user and token from auth store - MUST BE BEFORE any useEffect that uses user
+  const { user, token } = useAuthStore()
+  
   // Check subscription for live TV
   useEffect(() => {
     if (!type && user && !hasValidSubscription(user)) {
@@ -167,9 +170,6 @@ function PlayerPage() {
   const [page, setPage] = useState(1)
   const [showFilters, setShowFilters] = useState(false)
   const ITEMS_PER_PAGE = 20
-  
-  // Get user and token from auth store
-  const { user, token } = useAuthStore()
 
   // Debounce search query - 300ms gecikme
   const debouncedSearchQuery = useDebounce(searchQuery, 300)
@@ -369,10 +369,23 @@ function PlayerPage() {
       })
       
       if (!response.ok) {
-        throw new Error(`M3U erişim hatası: ${response.status}`)
+        // Detayli hata mesaji
+        let errorMsg = `M3U erisim hatasi: ${response.status}`
+        if (response.status === 404) {
+          errorMsg = 'M3U playlist bulunamadi (404). URL gecersiz veya sunucu erisilemiyor.'
+        } else if (response.status === 403) {
+          errorMsg = 'M3U erisim izni reddedildi (403). Abonelik suresi dolmus olabilir.'
+        }
+        throw new Error(errorMsg)
       }
       
       const text = await response.text()
+      
+      // M3U icerigi bos mu kontrol et
+      if (!text || text.trim().length === 0) {
+        throw new Error('M3U playlist bos veya gecersiz icerik')
+      }
+      
       const parsed = parseM3U(text)
       
       // Cache'e kaydet

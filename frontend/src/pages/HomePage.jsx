@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import { 
@@ -370,6 +370,16 @@ function HomePage() {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
+  
+  // Check subscription status
+  useEffect(() => {
+    if (user) {
+      const hasSubscription = user.expiresAt && new Date(user.expiresAt) > new Date()
+      if (!hasSubscription) {
+        setShowPurchaseModal(true)
+      }
+    }
+  }, [user])
 
   const categories = [
     { id: 'live', title: 'Canlı TV', icon: Radio, count: '1000+ Kanal', link: '/live-tv', color: PRIMARY },

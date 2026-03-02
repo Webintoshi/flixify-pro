@@ -6,7 +6,7 @@ import {
   Package, Check, Zap, Clock, Calendar, Shield, X, 
   CreditCard, Landmark, Bitcoin, Copy, CheckCircle, 
   ArrowRight, ExternalLink, Sparkles, Crown, Tv, Film, Smartphone, Headphones,
-  TrendingDown, ChevronRight, Lock, Star
+  TrendingDown, ChevronRight, Lock, Star, AlertCircle
 } from 'lucide-react';
 
 // ============================================
@@ -518,6 +518,25 @@ function ProfilePackages() {
       </motion.div>
 
       <div className="max-w-4xl mx-auto px-6">
+        {/* Alert Message from Redirect */}
+        <AnimatePresence>
+          {alertMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="mb-6 p-4 rounded-xl flex items-center gap-3"
+              style={{ 
+                background: 'rgba(239, 68, 68, 0.15)',
+                border: '1px solid rgba(239, 68, 68, 0.3)'
+              }}
+            >
+              <AlertCircle className="w-5 h-5 flex-shrink-0" style={{ color: '#ef4444' }} />
+              <p style={{ color: '#fca5a5' }}>{alertMessage}</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Aktif Paket Banner */}
         <AnimatePresence>
           {currentPackage && (

@@ -513,10 +513,22 @@ function SeriesPage() {
       });
       
       if (!response.ok) {
-        throw new Error('M3U yuklenemedi');
+        // Detayli hata mesaji
+        if (response.status === 404) {
+          throw new Error('M3U playlist bulunamadi (404). URL gecersiz veya sunucu erisilemiyor.');
+        } else if (response.status === 403) {
+          throw new Error('M3U erisim izni reddedildi (403). Abonelik suresi dolmus olabilir.');
+        } else {
+          throw new Error(`M3U yuklenemedi (HTTP ${response.status})`);
+        }
       }
       
       const text = await response.text();
+      
+      // M3U icerigi bos mu kontrol et
+      if (!text || text.trim().length === 0) {
+        throw new Error('M3U playlist bos veya gecersiz icerik');
+      }
       
       const parsedEpisodes = parseSeriesFromM3U(text);
       const groupedSeries = groupBySeries(parsedEpisodes);

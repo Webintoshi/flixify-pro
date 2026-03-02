@@ -66,13 +66,10 @@ class User {
    */
   _validateInvariants() {
     // Note: Active users can exist without M3U until they purchase a package
-
-    // Check expiration for active users
-    if (this._status.equals(UserStatus.ACTIVE) && this._expiresAt) {
-      if (this._expiresAt < new Date()) {
-        throw new Error('Cannot activate user with expired subscription');
-      }
-    }
+    // Note: Reconstitute allows expired users (they exist in database)
+    
+    // No strict validation for reconstitution
+    // Business logic handles expired users via canAccessContent() and isExpired()
   }
 
   /**

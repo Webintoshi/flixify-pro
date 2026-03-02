@@ -168,14 +168,21 @@ describe('User Entity', () => {
     });
 
     test('expired user cannot access content', () => {
-      // This tests that we can't even create an active user with expired date
+      // Expired user can exist in database (data integrity)
+      // but cannot access content
       const pastDate = new Date(Date.now() - 86400000);
-      expect(() => new User({
+      const user = new User({
         ...validUserData,
         status: 'active',
         m3uUrl: 'http://example.com/playlist.m3u',
         expiresAt: pastDate.toISOString()
-      })).toThrow('Cannot activate user with expired subscription');
+      });
+      
+      expect(user.isExpired()).toBe(true);
+      
+      const check = user.canAccessContent();
+      expect(check.allowed).toBe(false);
+      expect(check.reason).toContain('expired');
     });
   });
 
