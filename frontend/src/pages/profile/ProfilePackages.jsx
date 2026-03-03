@@ -360,10 +360,15 @@ const PriceBreakdown = ({ pkg, selectedDuration }) => {
 function ProfilePackages() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuthStore();
+  const { user, fetchUser } = useAuthStore();
   
   // Show message from redirect
   const [alertMessage, setAlertMessage] = useState(location.state?.message || null);
+  
+  // Track previous user state for detecting updates
+  const [prevExpiry, setPrevExpiry] = useState(null);
+  const [prevM3U, setPrevM3U] = useState(null);
+  const [updateMessage, setUpdateMessage] = useState(null);
   
   useEffect(() => {
     if (alertMessage) {
@@ -372,6 +377,25 @@ function ProfilePackages() {
       return () => clearTimeout(timer);
     }
   }, [alertMessage])
+  
+  // Check for package/M3U updates
+  useEffect(() => {
+    if (user) {
+      // Check if package was just activated
+      if (prevExpiry === null && user.expiresAt) {
+        setUpdateMessage('🎉 Paketiniz aktifleştirildi!');
+        setTimeout(() => setUpdateMessage(null), 5000);
+      }
+      // Check if M3U was just assigned
+      if (prevM3U === null && user.m3uUrl) {
+        setUpdateMessage('📺 M3U linkiniz tanımlandı!');
+        setTimeout(() => setUpdateMessage(null), 5000);
+      }
+      
+      setPrevExpiry(user.expiresAt);
+      setPrevM3U(user.m3uUrl);
+    }
+  }, [user?.expiresAt, user?.m3uUrl])
   
   const [loading, setLoading] = useState(true);
   const [pkg, setPkg] = useState(DEFAULT_PACKAGE);
@@ -385,7 +409,14 @@ function ProfilePackages() {
 
   useEffect(() => {
     loadData();
-  }, []);
+    
+    // Auto-refresh user data every 10 seconds to check for package/M3U updates
+    const interval = setInterval(() => {
+      fetchUser();
+    }, 10000);
+    
+    return () => clearInterval(interval);
+  }, [fetchUser]);
 
   const loadData = async () => {
     try {
@@ -542,6 +573,25 @@ function ProfilePackages() {
             >
               <AlertCircle className="w-5 h-5 flex-shrink-0" style={{ color: '#ef4444' }} />
               <p style={{ color: '#fca5a5' }}>{alertMessage}</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Update Notification (Package/M3U) */}
+        <AnimatePresence>
+          {updateMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="mb-6 p-4 rounded-xl flex items-center gap-3"
+              style={{ 
+                background: 'rgba(16, 185, 129, 0.15)',
+                border: '1px solid rgba(16, 185, 129, 0.3)'
+              }}
+            >
+              <CheckCircle className="w-5 h-5 flex-shrink-0" style={{ color: '#10b981' }} />
+              <p style={{ color: '#6ee7b7' }}>{updateMessage}</p>
             </motion.div>
           )}
         </AnimatePresence>

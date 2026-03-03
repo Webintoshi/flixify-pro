@@ -12,7 +12,8 @@ import {
   Save,
   Loader2,
   Link2,
-  AlertTriangle
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-react'
 
 const PRIMARY = '#E50914'
@@ -52,25 +53,60 @@ function AdminUsers() {
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
+  // Track previous user count for detecting new registrations
+  const [previousUserCount, setPreviousUserCount] = useState(0)
+  const [lastUpdated, setLastUpdated] = useState(null)
+
   useEffect(() => {
     loadData()
+    
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => {
+      loadData(true) // silent refresh (no loading spinner)
+    }, 30000)
+    
+    return () => clearInterval(interval)
   }, [])
 
-  const loadData = async () => {
-    setLoading(true)
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true)
     setError(null)
     try {
       const usersData = await fetchUsers()
-      const users = usersData.data?.users || usersData.users || []
-      setUsers(users)
+      const newUsers = usersData.data?.users || usersData.users || []
+      
+      // Check for new users
+      if (silent && newUsers.length > previousUserCount && previousUserCount > 0) {
+        const newUserCount = newUsers.length - previousUserCount
+        // Show browser notification for new users
+        if (Notification.permission === 'granted') {
+          new Notification('Flixify Pro', {
+            body: `${newUserCount} yeni kullanıcı kaydoldu!`,
+            icon: '/favicon.ico'
+          })
+        }
+      }
+      
+      setPreviousUserCount(newUsers.length)
+      setUsers(newUsers)
+      setLastUpdated(new Date())
     } catch (err) {
       console.error('Data load error:', err)
-      setError(err.message || 'Kullanıcılar yüklenirken bir hata oluştu')
+      if (!silent) {
+        setError(err.message || 'Kullanıcılar yüklenirken bir hata oluştu')
+      }
       setUsers([])
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
+
+  // Request notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
+  }, [])
 
   const filteredUsers = users.filter(user => 
     user.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -222,16 +258,37 @@ function AdminUsers() {
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <Users className="w-6 h-6" style={{ color: PRIMARY }} />
             Kullanıcı Yönetimi
+            <span className="text-sm font-normal text-gray-500 ml-2">
+              ({filteredUsers.length} kullanıcı)
+            </span>
           </h1>
-          <p className="text-gray-400">Kullanıcıları yönetin ve erişim sürelerini tanımlayın</p>
+          <p className="text-gray-400">
+            Kullanıcıları yönetin ve erişim sürelerini tanımlayın
+            {lastUpdated && (
+              <span className="ml-2 text-xs text-gray-500">
+                • Son güncelleme: {lastUpdated.toLocaleTimeString('tr-TR')}
+              </span>
+            )}
+          </p>
         </div>
-        <button 
-          className="px-4 py-2 rounded-xl font-medium text-white flex items-center gap-2"
-          style={{ backgroundColor: PRIMARY }}
-        >
-          <Plus className="w-5 h-5" />
-          Yeni Kullanıcı
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => loadData()}
+            disabled={loading}
+            className="px-3 py-2 rounded-xl font-medium text-white flex items-center gap-2 hover:bg-white/10 transition-colors disabled:opacity-50"
+            style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
+            title="Listeyi Yenile"
+          >
+            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+          <button 
+            className="px-4 py-2 rounded-xl font-medium text-white flex items-center gap-2"
+            style={{ backgroundColor: PRIMARY }}
+          >
+            <Plus className="w-5 h-5" />
+            Yeni Kullanıcı
+          </button>
+        </div>
       </div>
 
       {/* Search */}
