@@ -89,17 +89,22 @@ export const useAuthStore = create(
       // Get authentication status (getter, not function)
       get isAuthenticated() {
         return !!get().token
-      }
+      },
+
+      // Hydration flag - persist tamamlandı mı?
+      _hasHydrated: false,
+      setHasHydrated: (value) => set({ _hasHydrated: value })
     }),
     {
       name: 'iptv-auth-storage',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ token: state.token, user: state.user }),
-      onRehydrateStorage: (state) => () => {
+      onRehydrateStorage: () => (state) => {
         // Storage'dan veri yüklendikten sonra
         if (state?.token) {
           api.defaults.headers.common['Authorization'] = `Bearer ${state.token}`
         }
+        state?.setHasHydrated(true)
       },
       skipHydration: false
     }
