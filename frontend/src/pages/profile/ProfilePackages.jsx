@@ -458,16 +458,42 @@ function ProfilePackages() {
   useEffect(() => {
     loadData();
     
+    // Listen for admin panel changes (localStorage update)
+    const handleStorageChange = (e) => {
+      if (e.key === 'flixify-packages') {
+        console.log('[ProfilePackages] Packages updated from admin panel');
+        const updatedPackages = loadPackagesFromAdmin();
+        setPkg(updatedPackages);
+        setSelectedDuration(updatedPackages.durations?.[0]);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also check for package updates every 10 seconds (faster for packages)
+    const packageInterval = setInterval(() => {
+      if (!document.hidden) {
+        const updatedPackages = loadPackagesFromAdmin();
+        // Only update if package count or prices changed
+        if (JSON.stringify(updatedPackages) !== JSON.stringify(pkg)) {
+          console.log('[ProfilePackages] Package prices updated');
+          setPkg(updatedPackages);
+        }
+      }
+    }, 10000); // 10 seconds
+    
     // Auto-refresh user data every 60 seconds (slower to avoid rate limit)
-    const interval = setInterval(() => {
-      // Only fetch if page is visible (not in background)
+    const userInterval = setInterval(() => {
       if (!document.hidden) {
         fetchUser();
       }
     }, 60000); // 60 seconds
     
-    return () => clearInterval(interval);
-  }, [fetchUser]);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(packageInterval);
+      clearInterval(userInterval);
+    };
+  }, [fetchUser, pkg]);
 
   const loadData = async () => {
     try {
