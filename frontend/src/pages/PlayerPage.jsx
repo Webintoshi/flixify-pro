@@ -189,7 +189,17 @@ function PlayerPage() {
   
   // Fetch channels when in live mode and user is available
   useEffect(() => {
-    if (videoMode === 'live' && user?.m3uUrl) {
+    if (videoMode === 'live') {
+      if (!user) {
+        // User henüz yüklenmedi, bekle
+        setLoading(true)
+        return
+      }
+      if (!user?.m3uUrl) {
+        setError('M3U URL bulunamadı. Lütfen yönetici ile iletişime geçin.')
+        setLoading(false)
+        return
+      }
       // Önce cache kontrolü
       const cached = M3UCache.get(user.code)
       if (cached) {
@@ -205,7 +215,7 @@ function PlayerPage() {
         fetchChannels()
       }
     }
-  }, [videoMode, user?.m3uUrl, user?.code])
+  }, [videoMode, user, user?.m3uUrl, user?.code])
 
   // Video Player (Movie/Series)
   useEffect(() => {

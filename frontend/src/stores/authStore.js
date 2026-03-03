@@ -98,7 +98,7 @@ export const useAuthStore = create(
     {
       name: 'iptv-auth-storage',
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ token: state.token }),
+      partialize: (state) => ({ token: state.token, user: state.user }),
       onRehydrateStorage: () => (state) => {
         if (state?.token) {
           api.defaults.headers.common['Authorization'] = `Bearer ${state.token}`

@@ -39,18 +39,20 @@ api.interceptors.response.use(
   (error) => {
     // Handle specific error cases
     if (error.response?.status === 401) {
-      // Token expired or invalid
+      // Token expired or invalid - only logout if explicitly auth failed
       const errorCode = error.response?.data?.code
       const errorMessage = error.response?.data?.message || 'Oturum süresi dolmuş'
       
       console.error('Auth error:', { code: errorCode, message: errorMessage })
       
-      // Clear storage and redirect to login
-      localStorage.removeItem('iptv-auth-storage')
-      delete api.defaults.headers.common['Authorization']
+      // Only force logout on explicit auth endpoints, not on all 401s
+      const isAuthEndpoint = error.config?.url?.includes('/auth/')
+      const isExplicitTokenError = errorCode === 'TOKEN_EXPIRED' || errorCode === 'INVALID_TOKEN'
       
-      // Only redirect if not already on login page
-      if (window.location.pathname !== '/') {
+      if ((isAuthEndpoint || isExplicitTokenError) && window.location.pathname !== '/') {
+        // Clear storage and redirect to login
+        localStorage.removeItem('iptv-auth-storage')
+        delete api.defaults.headers.common['Authorization']
         window.location.href = '/?error=' + encodeURIComponent(errorMessage)
       }
     }

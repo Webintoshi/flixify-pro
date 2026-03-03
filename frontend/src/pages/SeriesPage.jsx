@@ -498,6 +498,11 @@ function SeriesPage() {
       setLoading(true);
       setError(null);
 
+      // User yükleniyor, bekle
+      if (!user) {
+        return; // Yükleniyor durumunda kal
+      }
+
       // Kullanıcının kendi M3U URL'sini kullan
       if (!user?.m3uUrl) {
         setLoading(false);
