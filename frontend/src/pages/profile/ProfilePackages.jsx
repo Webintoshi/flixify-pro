@@ -443,9 +443,12 @@ function ProfilePackages() {
   }, [user?.expiresAt, user?.m3uUrl])
   
   const [loading, setLoading] = useState(true);
-  const [pkg, setPkg] = useState(DEFAULT_PACKAGE);
+  const [pkg, setPkg] = useState(() => loadPackagesFromAdmin());
   const [paymentSettings, setPaymentSettings] = useState(DEFAULT_PAYMENT_SETTINGS);
-  const [selectedDuration, setSelectedDuration] = useState(DEFAULT_PACKAGE.durations[0]);
+  const [selectedDuration, setSelectedDuration] = useState(() => {
+    const initialPkg = loadPackagesFromAdmin();
+    return initialPkg.durations?.[0];
+  });
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentStep, setPaymentStep] = useState(1);
   const [selectedMethod, setSelectedMethod] = useState(null);
