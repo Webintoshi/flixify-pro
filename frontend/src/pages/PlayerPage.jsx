@@ -899,10 +899,10 @@ function PlayerPage() {
         {/* Video ve Kanal Listesi - Yatay Layout */}
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Video Player - Sinematik */}
-          <div className={`${isFullscreen ? 'fixed inset-0 z-50' : 'lg:col-span-2'}`}>
+          <div className={`${isFullscreen ? 'fixed inset-0 z-50 bg-black' : 'lg:col-span-2'}`}>
             <div 
               id="video-player-wrapper"
-              className={`${isFullscreen ? 'w-full h-full bg-black' : 'rounded-3xl overflow-hidden shadow-2xl'}`}
+              className={`${isFullscreen ? 'w-full h-screen bg-black' : 'rounded-3xl overflow-hidden shadow-2xl'}`}
               style={!isFullscreen ? { 
                 backgroundColor: BG_CARD, 
                 border: `2px solid ${BORDER}`,
@@ -910,9 +910,9 @@ function PlayerPage() {
               } : {}}
             >
               <div 
-                className={`bg-black relative ${isFullscreen ? 'w-full h-full' : 'aspect-video'}`}
+                className={`bg-black relative ${isFullscreen ? 'fixed inset-0 z-50' : 'aspect-video rounded-3xl overflow-hidden'}`}
                 onMouseMove={handleMouseMove}
-                onClick={() => !showControls && setShowControls(true)}
+                onClick={toggleFullscreen}
               >
                 {loading && (
                   <div className="absolute inset-0 flex items-center justify-center z-10">
@@ -943,7 +943,7 @@ function PlayerPage() {
                 
                 <video 
                   ref={videoRef} 
-                  className={`${isFullscreen ? 'w-full h-full' : 'w-full h-full'} object-contain`} 
+                  className={`${isFullscreen ? 'w-full h-full object-cover' : 'w-full h-full object-contain'}`}
                   autoPlay 
                   playsInline 
                 />
@@ -951,11 +951,10 @@ function PlayerPage() {
                 {/* Controls - Auto-hide in fullscreen */}
                 <div 
                   id="video-container"
-                  className={`absolute bottom-0 left-0 right-0 p-6 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}
+                  className={`absolute bottom-0 left-0 right-0 p-6 transition-opacity duration-500 ${showControls ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
                   style={{ 
-                    background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.6) 50%, transparent 100%)',
+                    background: showControls ? 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 40%, transparent 100%)' : 'none',
                   }}
-                  onMouseMove={handleMouseMove}
                 >
                   {/* Kanal Bilgisi - Tam Ekranda Üstte */}
                   {isFullscreen && currentChannel && (
