@@ -16,6 +16,8 @@
 const express = require('express');
 const logger = require('../../config/logger');
 
+const PackageController = require('../controllers/PackageController');
+
 function createRoutes({
   authController,
   adminController,
@@ -28,6 +30,7 @@ function createRoutes({
   validators,
   userRepository
 }) {
+  const packageController = new PackageController();
   const router = express.Router();
 
   // Health check (no auth required)
@@ -266,36 +269,43 @@ function createRoutes({
     adminController.rejectPayment
   );
 
-  // GET /api/v1/admin/packages - List packages
+  // GET /api/v1/packages/public - Get public packages (no auth required)
+  router.get(
+    '/packages/public',
+    rateLimiters.global,
+    packageController.getPublicPackages.bind(packageController)
+  );
+
+  // GET /api/v1/admin/packages - List all packages (admin)
   router.get(
     '/admin/packages',
     rateLimiters.admin,
     adminAuthMiddleware,
-    adminController.getPackages
+    packageController.getAllPackages.bind(packageController)
   );
 
-  // POST /api/v1/admin/packages - Create package
+  // POST /api/v1/admin/packages - Create package (admin)
   router.post(
     '/admin/packages',
     rateLimiters.admin,
     adminAuthMiddleware,
-    adminController.createPackage
+    packageController.createPackage.bind(packageController)
   );
 
-  // PUT /api/v1/admin/packages/:id - Update package
+  // PUT /api/v1/admin/packages/:id - Update package (admin)
   router.put(
     '/admin/packages/:id',
     rateLimiters.admin,
     adminAuthMiddleware,
-    adminController.updatePackage
+    packageController.updatePackage.bind(packageController)
   );
 
-  // DELETE /api/v1/admin/packages/:id - Delete package
+  // DELETE /api/v1/admin/packages/:id - Delete package (admin)
   router.delete(
     '/admin/packages/:id',
     rateLimiters.admin,
     adminAuthMiddleware,
-    adminController.deletePackage
+    packageController.deletePackage.bind(packageController)
   );
 
   // GET /api/v1/admin/admins - List admins

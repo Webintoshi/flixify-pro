@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useAdminStore } from '../../stores/adminStore'
 import { 
   Package, 
   Plus, 
@@ -11,124 +12,66 @@ import {
   Save,
   Loader2,
   TurkishLira,
-  RefreshCw
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react'
 
 const PRIMARY = '#E50914'
 const BG_SURFACE = '#141414'
 const BORDER = '#2a2a2a'
 
-// Sabit 4 paket yapısı
-const DEFAULT_PACKAGES = [
-  {
-    id: '1',
-    name: '1 Aylık Paket',
-    description: '30 gün boyunca geçerli',
-    monthlyPrice: 100,
-    duration: 1,
-    durationLabel: 'Ay',
-    features: ['1000+ Canlı TV Kanalı', '4K UHD Kalite', '7/24 VIP Destek', 'Tüm Film & Dizi Arşivi'],
-    isActive: true,
-    popular: false,
-    badge: null
-  },
-  {
-    id: '2',
-    name: '3 Aylık Paket',
-    description: '90 gün boyunca geçerli',
-    monthlyPrice: 95,
-    duration: 3,
-    durationLabel: 'Ay',
-    features: ['1000+ Canlı TV Kanalı', '4K UHD Kalite', '7/24 VIP Destek', 'Tüm Film & Dizi Arşivi', '%5 İndirim'],
-    isActive: true,
-    popular: false,
-    badge: '%5'
-  },
-  {
-    id: '3',
-    name: '6 Aylık Paket',
-    description: '180 gün boyunca geçerli',
-    monthlyPrice: 90,
-    duration: 6,
-    durationLabel: 'Ay',
-    features: ['1000+ Canlı TV Kanalı', '4K UHD Kalite', '7/24 VIP Destek', 'Tüm Film & Dizi Arşivi', '%10 İndirim'],
-    isActive: true,
-    popular: true,
-    badge: 'Popüler'
-  },
-  {
-    id: '4',
-    name: '12 Aylık Paket',
-    description: '365 gün boyunca geçerli',
-    monthlyPrice: 80,
-    duration: 12,
-    durationLabel: 'Ay',
-    features: ['1000+ Canlı TV Kanalı', '4K UHD Kalite', '7/24 VIP Destek', 'Tüm Film & Dizi Arşivi', '%20 İndirim'],
-    isActive: true,
-    popular: false,
-    badge: 'En İyi'
-  }
-]
+// API URL
+const API_URL = import.meta.env.VITE_API_URL || 'http://5.175.136.42:9199/api/v1'
 
 function AdminPackages() {
+  const { adminToken } = useAdminStore()
+  
   const [packages, setPackages] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [editingPackage, setEditingPackage] = useState(null)
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    monthlyPrice: 0,
+    price: 100,
     duration: 1,
-    durationLabel: 'Ay',
     features: [],
-    isActive: true,
     badge: '',
-    popular: false
+    isPopular: false,
+    isActive: true
   })
   const [saving, setSaving] = useState(false)
   const [featureInput, setFeatureInput] = useState('')
   const [lastUpdated, setLastUpdated] = useState(null)
 
-  // localStorage'dan paketleri yükle
+  // Load packages from API
   useEffect(() => {
     loadPackages()
   }, [])
 
-  const loadPackages = () => {
+  const loadPackages = async () => {
     try {
-      const stored = localStorage.getItem('flixify-packages')
-      if (stored) {
-        const parsed = JSON.parse(stored)
-        // Mevcut paketleri birleştir (yeni alanlar eklendiyse)
-        const merged = DEFAULT_PACKAGES.map(defaultPkg => {
-          const storedPkg = parsed.find(p => p.id === defaultPkg.id)
-          return storedPkg ? { ...defaultPkg, ...storedPkg } : defaultPkg
-        })
-        setPackages(merged)
-      } else {
-        // İlk kez yüklüyor, varsayılanları kaydet
-        setPackages(DEFAULT_PACKAGES)
-        localStorage.setItem('flixify-packages', JSON.stringify(DEFAULT_PACKAGES))
+      setLoading(true)
+      setError(null)
+      
+      const response = await fetch(`${API_URL}/admin/packages`, {
+        headers: { 'Authorization': `Bearer ${adminToken}` }
+      })
+      
+      if (!response.ok) {
+        throw new Error('Paketler yüklenemedi')
       }
+      
+      const data = await response.json()
+      setPackages(data.data?.packages || [])
       setLastUpdated(new Date())
-    } catch (error) {
-      console.error('Packages load error:', error)
-      setPackages(DEFAULT_PACKAGES)
+    } catch (err) {
+      console.error('Load packages error:', err)
+      setError(err.message)
+      setPackages([])
     } finally {
       setLoading(false)
-    }
-  }
-
-  const savePackages = (newPackages) => {
-    try {
-      localStorage.setItem('flixify-packages', JSON.stringify(newPackages))
-      setPackages(newPackages)
-      setLastUpdated(new Date())
-      return true
-    } catch (error) {
-      console.error('Save error:', error)
-      return false
     }
   }
 
@@ -137,13 +80,12 @@ function AdminPackages() {
     setFormData({
       name: pkg.name,
       description: pkg.description,
-      monthlyPrice: pkg.monthlyPrice,
+      price: pkg.price,
       duration: pkg.duration,
-      durationLabel: pkg.durationLabel,
       features: [...pkg.features],
-      isActive: pkg.isActive,
       badge: pkg.badge || '',
-      popular: pkg.popular || false
+      isPopular: pkg.isPopular,
+      isActive: pkg.isActive
     })
     setShowModal(true)
   }
@@ -151,46 +93,53 @@ function AdminPackages() {
   const handleSave = async () => {
     setSaving(true)
     try {
-      const updatedPackages = packages.map(pkg => {
-        if (pkg.id === editingPackage.id) {
-          return {
-            ...pkg,
-            ...formData,
-            // Toplam fiyatı hesapla
-            totalPrice: formData.monthlyPrice * formData.duration
-          }
-        }
-        return pkg
+      const url = editingPackage 
+        ? `${API_URL}/admin/packages/${editingPackage.id}`
+        : `${API_URL}/admin/packages`
+      
+      const method = editingPackage ? 'PUT' : 'POST'
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
       })
       
-      if (savePackages(updatedPackages)) {
-        setShowModal(false)
-        // Diğer sekmelerin güncellenmesi için event dispatch et
-        window.dispatchEvent(new StorageEvent('storage', {
-          key: 'flixify-packages',
-          newValue: JSON.stringify(updatedPackages)
-        }))
-      } else {
-        alert('Paketler kaydedilemedi')
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Kaydetme başarısız')
       }
-    } catch (error) {
-      console.error('Save error:', error)
-      alert('Kaydetme başarısız: ' + error.message)
+      
+      await loadPackages()
+      setShowModal(false)
+    } catch (err) {
+      console.error('Save error:', err)
+      alert('Kaydetme başarısız: ' + err.message)
     } finally {
       setSaving(false)
     }
   }
 
-  const handleReset = () => {
-    if (confirm('Tüm paketleri varsayılan değerlere sıfırlamak istediğinize emin misiniz?')) {
-      setPackages(DEFAULT_PACKAGES)
-      localStorage.setItem('flixify-packages', JSON.stringify(DEFAULT_PACKAGES))
-      setLastUpdated(new Date())
-      // Event dispatch
-      window.dispatchEvent(new StorageEvent('storage', {
-        key: 'flixify-packages',
-        newValue: JSON.stringify(DEFAULT_PACKAGES)
-      }))
+  const handleDelete = async (pkg) => {
+    if (!confirm(`"${pkg.name}" paketini silmek istediğinize emin misiniz?`)) return
+    
+    try {
+      const response = await fetch(`${API_URL}/admin/packages/${pkg.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${adminToken}` }
+      })
+      
+      if (!response.ok) {
+        throw new Error('Silme başarısız')
+      }
+      
+      await loadPackages()
+    } catch (err) {
+      console.error('Delete error:', err)
+      alert('Silme başarısız: ' + err.message)
     }
   }
 
@@ -211,20 +160,27 @@ function AdminPackages() {
     })
   }
 
-  const calculateTotalPrice = () => {
-    return formData.monthlyPrice * formData.duration
-  }
-
-  const calculateDiscount = () => {
-    const basePrice = formData.monthlyPrice * formData.duration
-    const totalPrice = calculateTotalPrice()
-    return basePrice - totalPrice
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-4 border-red-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 space-y-4">
+        <AlertCircle className="w-12 h-12 text-red-500" />
+        <p className="text-red-500">{error}</p>
+        <button 
+          onClick={loadPackages}
+          className="px-4 py-2 rounded-xl font-medium text-white flex items-center gap-2"
+          style={{ backgroundColor: PRIMARY }}
+        >
+          <RefreshCw className="w-4 h-4" />
+          Tekrar Dene
+        </button>
       </div>
     )
   }
@@ -237,9 +193,12 @@ function AdminPackages() {
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <Package className="w-6 h-6" style={{ color: PRIMARY }} />
             Paket Yönetimi
+            <span className="text-sm font-normal text-gray-500 ml-2">
+              ({packages.length} paket)
+            </span>
           </h1>
           <p className="text-gray-400">
-            4 sabit paketi yönetin
+            Supabase veritabanından paketleri yönetin
             {lastUpdated && (
               <span className="ml-2 text-xs text-gray-500">
                 • Son güncelleme: {lastUpdated.toLocaleTimeString('tr-TR')}
@@ -247,14 +206,15 @@ function AdminPackages() {
             )}
           </p>
         </div>
-        <button 
-          onClick={handleReset}
-          className="px-4 py-2 rounded-xl font-medium text-white flex items-center gap-2 hover:bg-white/10 transition-colors"
-          style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
-        >
-          <RefreshCw className="w-5 h-5" />
-          Varsayılana Sıfırla
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={loadPackages}
+            className="px-3 py-2 rounded-xl font-medium text-white flex items-center gap-2 hover:bg-white/10 transition-colors"
+            style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
+          >
+            <RefreshCw className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* Info Banner */}
@@ -263,7 +223,7 @@ function AdminPackages() {
         style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)' }}
       >
         <p className="text-blue-400 text-sm">
-          ℹ️ Bu 4 paket kullanıcı panelinde gösterilir. Paket özelliklerini düzenleyebilirsiniz.
+          ℹ️ Bu paketler Supabase veritabanında saklanır ve kullanıcı panelinde gösterilir.
         </p>
       </div>
 
@@ -275,8 +235,8 @@ function AdminPackages() {
             className="rounded-2xl overflow-hidden transition-all hover:scale-[1.02]"
             style={{ 
               backgroundColor: BG_SURFACE, 
-              border: `2px solid ${pkg.popular ? PRIMARY : BORDER}`,
-              boxShadow: pkg.popular ? `0 0 20px ${PRIMARY}40` : 'none'
+              border: `2px solid ${pkg.isPopular ? PRIMARY : BORDER}`,
+              boxShadow: pkg.isPopular ? `0 0 20px ${PRIMARY}40` : 'none'
             }}
           >
             {/* Badge */}
@@ -284,7 +244,7 @@ function AdminPackages() {
               <div 
                 className="px-4 py-1 text-center text-sm font-bold"
                 style={{ 
-                  backgroundColor: pkg.popular ? PRIMARY : '#f59e0b',
+                  backgroundColor: pkg.isPopular ? PRIMARY : '#f59e0b',
                   color: 'white'
                 }}
               >
@@ -308,24 +268,17 @@ function AdminPackages() {
             {/* Price */}
             <div className="p-6 text-center border-b" style={{ borderColor: BORDER }}>
               <div className="flex items-baseline justify-center gap-1">
-                <span className="text-4xl font-black text-white">
-                  ₺{pkg.monthlyPrice * pkg.duration}
-                </span>
+                <span className="text-4xl font-black text-white">₺{pkg.price}</span>
               </div>
               <p className="text-gray-500 text-sm mt-1">
-                ₺{pkg.monthlyPrice}/ay × {pkg.duration} {pkg.durationLabel}
+                {pkg.duration} Ay
               </p>
-              {pkg.duration > 1 && (
-                <p className="text-green-400 text-xs mt-2">
-                  İndirimli fiyat
-                </p>
-              )}
             </div>
 
             {/* Features */}
             <div className="p-6">
               <ul className="space-y-3">
-                {pkg.features.map((feature, idx) => (
+                {pkg.features?.map((feature, idx) => (
                   <li key={idx} className="flex items-center gap-2 text-gray-300 text-sm">
                     <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: PRIMARY }} />
                     {feature}
@@ -335,22 +288,39 @@ function AdminPackages() {
             </div>
 
             {/* Actions */}
-            <div className="p-6 border-t" style={{ borderColor: BORDER }}>
+            <div className="p-6 border-t" style={{ borderColor: BORDER }} className="flex gap-2">
               <button 
                 onClick={() => handleEdit(pkg)}
-                className="w-full py-3 rounded-xl font-medium text-white flex items-center justify-center gap-2 transition-colors"
+                className="flex-1 py-3 rounded-xl font-medium text-white flex items-center justify-center gap-2 transition-colors"
                 style={{ backgroundColor: PRIMARY }}
               >
                 <Edit2 className="w-4 h-4" />
                 Düzenle
+              </button>
+              <button 
+                onClick={() => handleDelete(pkg)}
+                className="p-3 rounded-xl hover:bg-red-500/20 text-gray-400 hover:text-red-500 transition-colors"
+              >
+                <Trash2 className="w-5 h-5" />
               </button>
             </div>
           </div>
         ))}
       </div>
 
+      {/* Empty State */}
+      {packages.length === 0 && (
+        <div className="text-center py-12">
+          <Package className="w-16 h-16 mx-auto mb-4 text-gray-600" />
+          <p className="text-gray-400 mb-4">Henüz paket bulunmuyor</p>
+          <p className="text-gray-500 text-sm">
+            Supabase'de packages tablosu oluşturulmalı
+          </p>
+        </div>
+      )}
+
       {/* Modal */}
-      {showModal && editingPackage && (
+      {showModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div 
             className="w-full max-w-lg rounded-2xl p-6 max-h-[90vh] overflow-y-auto"
@@ -358,7 +328,7 @@ function AdminPackages() {
           >
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-white">
-                Paket Düzenle: {editingPackage.name}
+                {editingPackage ? 'Paket Düzenle' : 'Yeni Paket'}
               </h2>
               <button 
                 onClick={() => setShowModal(false)}
@@ -394,11 +364,11 @@ function AdminPackages() {
               {/* Price & Duration */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Aylık Fiyat (₺)</label>
+                  <label className="block text-sm text-gray-400 mb-2">Fiyat (₺)</label>
                   <input
                     type="number"
-                    value={formData.monthlyPrice}
-                    onChange={(e) => setFormData({ ...formData, monthlyPrice: parseInt(e.target.value) || 0 })}
+                    value={formData.price}
+                    onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) || 0 })}
                     className="w-full px-4 py-3 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] text-white focus:outline-none focus:border-red-600"
                   />
                 </div>
@@ -407,20 +377,9 @@ function AdminPackages() {
                   <input
                     type="number"
                     value={formData.duration}
-                    disabled
-                    className="w-full px-4 py-3 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] text-gray-500 cursor-not-allowed"
+                    onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) || 1 })}
+                    className="w-full px-4 py-3 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] text-white focus:outline-none focus:border-red-600"
                   />
-                </div>
-              </div>
-
-              {/* Total Price Preview */}
-              <div 
-                className="p-4 rounded-xl"
-                style={{ backgroundColor: 'rgba(229, 9, 20, 0.1)', border: '1px solid rgba(229, 9, 20, 0.3)' }}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Toplam Fiyat:</span>
-                  <span className="text-2xl font-bold text-white">₺{calculateTotalPrice()}</span>
                 </div>
               </div>
 
@@ -440,12 +399,12 @@ function AdminPackages() {
               <div className="flex items-center gap-3">
                 <input
                   type="checkbox"
-                  id="popular"
-                  checked={formData.popular}
-                  onChange={(e) => setFormData({ ...formData, popular: e.target.checked })}
+                  id="isPopular"
+                  checked={formData.isPopular}
+                  onChange={(e) => setFormData({ ...formData, isPopular: e.target.checked })}
                   className="w-5 h-5 rounded border-gray-600"
                 />
-                <label htmlFor="popular" className="text-white cursor-pointer">
+                <label htmlFor="isPopular" className="text-white cursor-pointer">
                   Popüler olarak işaretle
                 </label>
               </div>

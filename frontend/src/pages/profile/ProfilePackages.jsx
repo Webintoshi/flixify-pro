@@ -8,6 +8,9 @@ import {
   Sparkles, AlertCircle, Loader2
 } from 'lucide-react';
 
+// API URL
+const API_URL = import.meta.env.VITE_API_URL || 'http://5.175.136.42:9199/api/v1';
+
 // ============================================
 // 🎨 THEME
 // ============================================
@@ -25,96 +28,55 @@ const THEME = {
   discount: '#f59e0b',
 };
 
-// Icon mapping
-const ICONS = {
-  tv: Tv,
-  film: Film,
-  '4k': Sparkles,
-  device: Smartphone,
-  support: Headphones,
-  crown: Crown,
-};
-
-// ============================================
-// 🎯 LOAD PACKAGES FROM ADMIN PANEL
-// ============================================
-const loadAdminPackages = () => {
-  try {
-    const stored = localStorage.getItem('flixify-packages');
-    if (stored) {
-      const packages = JSON.parse(stored);
-      // Sadece aktif paketleri al ve sırala (süreye göre)
-      const activePackages = packages
-        .filter(p => p.isActive)
-        .sort((a, b) => a.duration - b.duration)
-        .map(p => ({
-          id: p.id,
-          name: p.name,
-          description: p.description,
-          duration: p.duration,
-          durationLabel: p.durationLabel,
-          monthlyPrice: p.monthlyPrice,
-          totalPrice: p.monthlyPrice * p.duration,
-          features: p.features || [],
-          badge: p.badge || null,
-          popular: p.popular || false,
-          isActive: p.isActive
-        }));
-      
-      if (activePackages.length > 0) {
-        return activePackages;
-      }
-    }
-  } catch (e) {
-    console.error('[ProfilePackages] Load error:', e);
-  }
-  
-  // Fallback defaults
-  return [
-    { id: '1', name: '1 Aylık Paket', description: '30 gün erişim', duration: 1, durationLabel: 'Ay', monthlyPrice: 100, totalPrice: 100, features: ['1000+ Canlı TV', '4K Kalite', 'VIP Destek'], badge: null, popular: false },
-    { id: '2', name: '3 Aylık Paket', description: '90 gün erişim', duration: 3, durationLabel: 'Ay', monthlyPrice: 95, totalPrice: 285, features: ['1000+ Canlı TV', '4K Kalite', 'VIP Destek', '%5 İndirim'], badge: '%5', popular: false },
-    { id: '3', name: '6 Aylık Paket', description: '180 gün erişim', duration: 6, durationLabel: 'Ay', monthlyPrice: 90, totalPrice: 540, features: ['1000+ Canlı TV', '4K Kalite', 'VIP Destek', '%10 İndirim'], badge: 'Popüler', popular: true },
-    { id: '4', name: '12 Aylık Paket', description: '365 gün erişim', duration: 12, durationLabel: 'Ay', monthlyPrice: 80, totalPrice: 960, features: ['1000+ Canlı TV', '4K Kalite', 'VIP Destek', '%20 İndirim'], badge: 'En İyi', popular: false },
-  ];
-};
-
 // ============================================
 // 🎯 MAIN COMPONENT
 // ============================================
 function ProfilePackages() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, fetchUser } = useAuthStore();
+  const { user, token, fetchUser } = useAuthStore();
   
   const [packages, setPackages] = useState([]);
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [alertMessage, setAlertMessage] = useState(location.state?.message || null);
-  const [copied, setCopied] = useState(false);
 
-  // Load packages
+  // Load packages from API
   useEffect(() => {
-    const pkgs = loadAdminPackages();
-    setPackages(pkgs);
-    setSelectedPackage(pkgs.find(p => p.popular) || pkgs[2] || pkgs[0]);
-    setLoading(false);
+    loadPackages();
   }, []);
 
-  // Listen for admin panel updates
-  useEffect(() => {
-    const handleStorage = (e) => {
-      if (e.key === 'flixify-packages') {
-        const pkgs = loadAdminPackages();
-        setPackages(pkgs);
-        if (selectedPackage) {
-          const updated = pkgs.find(p => p.id === selectedPackage.id);
-          if (updated) setSelectedPackage(updated);
-        }
+  const loadPackages = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch(`${API_URL}/packages/public`);
+      
+      if (!response.ok) {
+        throw new Error('Paketler yüklenemedi');
       }
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, [selectedPackage]);
+      
+      const data = await response.json();
+      const pkgs = data.data?.packages || [];
+      
+      // Sort by duration
+      pkgs.sort((a, b) => a.duration - b.duration);
+      
+      setPackages(pkgs);
+      
+      // Select popular package or second one
+      const popular = pkgs.find(p => p.isPopular);
+      setSelectedPackage(popular || pkgs[1] || pkgs[0]);
+    } catch (err) {
+      console.error('Load packages error:', err);
+      setError(err.message);
+      setPackages([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Clear alert
   useEffect(() => {
@@ -136,6 +98,22 @@ function ProfilePackages() {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: THEME.bgDeepest }}>
         <Loader2 className="w-12 h-12 animate-spin" style={{ color: THEME.primary }} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center" style={{ backgroundColor: THEME.bgDeepest }}>
+        <AlertCircle className="w-16 h-16 mb-4" style={{ color: '#ef4444' }} />
+        <p className="text-white mb-4">{error}</p>
+        <button 
+          onClick={loadPackages}
+          className="px-6 py-3 rounded-xl font-medium text-white"
+          style={{ backgroundColor: THEME.primary }}
+        >
+          Tekrar Dene
+        </button>
       </div>
     );
   }
@@ -247,7 +225,7 @@ function ProfilePackages() {
                 <div 
                   className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap"
                   style={{ 
-                    backgroundColor: pkg.popular ? THEME.primary : THEME.discount,
+                    backgroundColor: pkg.isPopular ? THEME.primary : THEME.discount,
                     color: 'white'
                   }}
                 >
@@ -258,20 +236,20 @@ function ProfilePackages() {
               {/* Duration */}
               <div className="text-center mb-4 pt-2">
                 <span className="text-4xl font-black text-white">{pkg.duration}</span>
-                <span className="text-lg text-white/70 ml-1">{pkg.durationLabel}</span>
+                <span className="text-lg text-white/70 ml-1">Ay</span>
               </div>
 
               {/* Price */}
               <div className="text-center mb-4">
-                <span className="text-2xl font-bold text-white">₺{pkg.totalPrice}</span>
+                <span className="text-2xl font-bold text-white">₺{pkg.price}</span>
                 <p className="text-sm mt-1" style={{ color: THEME.textMuted }}>
-                  ₺{pkg.monthlyPrice}/ay
+                  Toplam ödeme
                 </p>
               </div>
 
               {/* Features */}
               <ul className="space-y-2 mb-4">
-                {pkg.features.slice(0, 4).map((feature, i) => (
+                {pkg.features?.slice(0, 4).map((feature, i) => (
                   <li key={i} className="flex items-center gap-2 text-sm" style={{ color: THEME.textSecondary }}>
                     <Check className="w-4 h-4 flex-shrink-0" style={{ color: THEME.success }} />
                     <span className="truncate">{feature}</span>
@@ -310,7 +288,7 @@ function ProfilePackages() {
                 <p style={{ color: THEME.textSecondary }}>{selectedPackage.description}</p>
               </div>
               <div className="text-right">
-                <span className="text-3xl font-black text-white">₺{selectedPackage.totalPrice}</span>
+                <span className="text-3xl font-black text-white">₺{selectedPackage.price}</span>
                 <p className="text-sm" style={{ color: THEME.textMuted }}>Toplam ödeme</p>
               </div>
             </div>
@@ -319,7 +297,7 @@ function ProfilePackages() {
             <div className="mt-6 pt-6 border-t" style={{ borderColor: THEME.border }}>
               <h3 className="text-sm font-medium mb-4" style={{ color: THEME.textMuted }}>Paket Özellikleri</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {selectedPackage.features.map((feature, i) => (
+                {selectedPackage.features?.map((feature, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <div 
                       className="w-6 h-6 rounded-full flex items-center justify-center"
@@ -378,7 +356,7 @@ function ProfilePackages() {
             onClick={() => alert('Ödeme sistemi entegrasyonu gerekiyor')}
           >
             <Zap className="w-5 h-5" />
-            {selectedPackage ? `₺${selectedPackage.totalPrice} - Satın Al` : 'Paket Seçin'}
+            {selectedPackage ? `₺${selectedPackage.price} - Satın Al` : 'Paket Seçin'}
           </button>
 
           <p className="text-center mt-4 text-xs" style={{ color: THEME.textMuted }}>

@@ -1,98 +1,106 @@
-/**
- * Supabase Package Repository Implementation
- */
+const PackageRepository = require('../../domain/repositories/PackageRepository')
+const Package = require('../../domain/entities/Package')
+const supabase = require('../database/supabase')
 
-const logger = require('../../config/logger');
+class SupabasePackageRepository extends PackageRepository {
+  async findAll() {
+    const { data, error } = await supabase
+      .from('packages')
+      .select('*')
+      .order('duration', { ascending: true })
 
-class SupabasePackageRepository {
-  constructor(supabaseClient) {
-    this._supabase = supabaseClient;
-    this._table = 'packages';
+    if (error) throw error
+    return data.map(p => this._toEntity(p))
   }
 
-  async findAll() {
-    try {
-      const { data, error } = await this._supabase
-        .from(this._table)
-        .select('*')
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true });
+  async findAllActive() {
+    const { data, error } = await supabase
+      .from('packages')
+      .select('*')
+      .eq('is_active', true)
+      .order('duration', { ascending: true })
 
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      logger.error('Database error in findAll', { error: error.message });
-      throw error;
-    }
+    if (error) throw error
+    return data.map(p => this._toEntity(p))
   }
 
   async findById(id) {
-    try {
-      const { data, error } = await this._supabase
-        .from(this._table)
-        .select('*')
-        .eq('id', id)
-        .single();
+    const { data, error } = await supabase
+      .from('packages')
+      .select('*')
+      .eq('id', id)
+      .single()
 
-      if (error) {
-        if (error.code === 'PGRST116') return null;
-        throw error;
-      }
-
-      return data;
-    } catch (error) {
-      logger.error('Database error in findById', { error: error.message });
-      throw error;
-    }
+    if (error) throw error
+    return data ? this._toEntity(data) : null
   }
 
   async create(packageData) {
-    try {
-      const { data, error } = await this._supabase
-        .from(this._table)
-        .insert(packageData)
-        .select()
-        .single();
+    const { data, error } = await supabase
+      .from('packages')
+      .insert([{
+        name: packageData.name,
+        description: packageData.description,
+        price: packageData.price,
+        duration: packageData.duration,
+        features: packageData.features || [],
+        badge: packageData.badge,
+        is_popular: packageData.isPopular || false,
+        is_active: packageData.isActive !== false
+      }])
+      .select()
+      .single()
 
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      logger.error('Database error in create', { error: error.message });
-      throw error;
-    }
+    if (error) throw error
+    return this._toEntity(data)
   }
 
-  async update(id, updates) {
-    try {
-      const { data, error } = await this._supabase
-        .from(this._table)
-        .update({ ...updates, updated_at: new Date().toISOString() })
-        .eq('id', id)
-        .select()
-        .single();
+  async update(id, packageData) {
+    const { data, error } = await supabase
+      .from('packages')
+      .update({
+        name: packageData.name,
+        description: packageData.description,
+        price: packageData.price,
+        duration: packageData.duration,
+        features: packageData.features,
+        badge: packageData.badge,
+        is_popular: packageData.isPopular,
+        is_active: packageData.isActive
+      })
+      .eq('id', id)
+      .select()
+      .single()
 
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      logger.error('Database error in update', { error: error.message });
-      throw error;
-    }
+    if (error) throw error
+    return this._toEntity(data)
   }
 
   async delete(id) {
-    try {
-      const { error } = await this._supabase
-        .from(this._table)
-        .delete()
-        .eq('id', id);
+    const { error } = await supabase
+      .from('packages')
+      .delete()
+      .eq('id', id)
 
-      if (error) throw error;
-      return true;
-    } catch (error) {
-      logger.error('Database error in delete', { error: error.message });
-      throw error;
-    }
+    if (error) throw error
+    return true
+  }
+
+  // Helper to convert DB row to entity
+  _toEntity(row) {
+    return new Package({
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      price: row.price,
+      duration: row.duration,
+      features: row.features || [],
+      badge: row.badge,
+      isPopular: row.is_popular,
+      isActive: row.is_active,
+      createdAt: row.created_at
+    })
   }
 }
 
-module.exports = SupabasePackageRepository;
+module.exports = SupabasePackageRepository
