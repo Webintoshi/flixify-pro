@@ -128,26 +128,71 @@ const FEATURE_ICONS = {
   'crown': Crown,
 };
 
-// Varsayılan paket
-const DEFAULT_PACKAGE = {
-  name: 'Flixify Pro',
-  tagline: 'Sınırsız Eğlence',
-  description: 'Tüm içeriklere sınırsız erişim',
-  monthlyPrice: 99.90,
-  features: [
-    { text: '1000+ Canlı TV Kanalı', icon: 'tv' },
-    { text: 'Tüm Film & Dizi Arşivi', icon: 'film' },
-    { text: '4K UHD Kalite', icon: '4k' },
-    { text: 'Sınırsız Cihaz', icon: 'device' },
-    { text: '7/24 VIP Destek', icon: 'support' },
-  ],
-  durations: [
-    { months: 1, label: '1', unit: 'Ay', discount: 0, savings: 0 },
-    { months: 3, label: '3', unit: 'Ay', discount: 5, badge: '%5', savingsText: '15 TL' },
-    { months: 6, label: '6', unit: 'Ay', discount: 10, badge: '%10', savingsText: '60 TL', popular: true },
-    { months: 12, label: '12', unit: 'Ay', discount: 20, badge: '%20', savingsText: '240 TL', best: true }
-  ]
-};
+// Admin panelinden paketleri yükle
+const loadPackagesFromAdmin = () => {
+  try {
+    const stored = localStorage.getItem('flixify-packages')
+    if (stored) {
+      const packages = JSON.parse(stored)
+      // Aktif paketleri filtrele ve formata dönüştür
+      const activePackages = packages
+        .filter(p => p.isActive)
+        .map(p => ({
+          months: p.duration,
+          label: p.duration.toString(),
+          unit: p.durationLabel,
+          discount: p.duration > 1 ? Math.round((1 - (p.monthlyPrice * p.duration) / (p.monthlyPrice * p.duration * 1.2)) * 100) : 0,
+          badge: p.badge || (p.duration > 1 ? `%${Math.round((1 - (p.monthlyPrice * p.duration) / (p.monthlyPrice * p.duration * 1.2)) * 100)}` : null),
+          savingsText: p.duration > 1 ? `${Math.round(p.monthlyPrice * p.duration * 0.2)} TL` : null,
+          popular: p.popular,
+          best: p.duration === 12,
+          price: p.monthlyPrice * p.duration,
+          monthlyPrice: p.monthlyPrice
+        }))
+      
+      if (activePackages.length > 0) {
+        return {
+          name: 'Flixify Pro',
+          tagline: 'Sınırsız Eğlence',
+          description: 'Tüm içeriklere sınırsız erişim',
+          monthlyPrice: activePackages[0].monthlyPrice,
+          features: packages[0]?.features?.map((f, i) => ({
+            text: f,
+            icon: ['tv', 'film', '4k', 'device', 'support', 'crown'][i] || 'crown'
+          })) || [
+            { text: '1000+ Canlı TV Kanalı', icon: 'tv' },
+            { text: 'Tüm Film & Dizi Arşivi', icon: 'film' },
+            { text: '4K UHD Kalite', icon: '4k' },
+            { text: '7/24 VIP Destek', icon: 'support' }
+          ],
+          durations: activePackages
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Package load error:', e)
+  }
+  
+  // Varsayılan paket (admin tanımlamazsa)
+  return {
+    name: 'Flixify Pro',
+    tagline: 'Sınırsız Eğlence',
+    description: 'Tüm içeriklere sınırsız erişim',
+    monthlyPrice: 100,
+    features: [
+      { text: '1000+ Canlı TV Kanalı', icon: 'tv' },
+      { text: 'Tüm Film & Dizi Arşivi', icon: 'film' },
+      { text: '4K UHD Kalite', icon: '4k' },
+      { text: '7/24 VIP Destek', icon: 'support' }
+    ],
+    durations: [
+      { months: 1, label: '1', unit: 'Ay', discount: 0, price: 100, monthlyPrice: 100 },
+      { months: 3, label: '3', unit: 'Ay', discount: 5, badge: '%5', price: 285, monthlyPrice: 95, popular: true },
+      { months: 6, label: '6', unit: 'Ay', discount: 10, badge: '%10', price: 540, monthlyPrice: 90 },
+      { months: 12, label: '12', unit: 'Ay', discount: 20, badge: '%20', price: 960, monthlyPrice: 80, best: true }
+    ]
+  }
+}
 
 const DEFAULT_PAYMENT_SETTINGS = {
   creditCardLink: '#',
@@ -423,48 +468,28 @@ function ProfilePackages() {
 
   const loadData = async () => {
     try {
-      // Get token from zustand store
+      // Admin panelinden paketleri yükle
+      const adminPackages = loadPackagesFromAdmin();
+      setPkg(adminPackages);
+      setSelectedDuration(adminPackages.durations?.[0]);
+
+      // Ödeme ayarlarını API'den veya localStorage'dan al
       const authStorage = JSON.parse(localStorage.getItem('iptv-auth-storage') || '{}');
       const token = authStorage.state?.token;
       
-      if (!token) {
-        console.error('[ProfilePackages] No token found');
-        return;
-      }
-      
-      const pkgResponse = await fetch(`${import.meta.env.VITE_API_URL || ''}/packages/public`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (pkgResponse.ok) {
-        const pkgData = await pkgResponse.json();
-        if (pkgData.data?.packages?.[0]) {
-          const apiPkg = pkgData.data.packages[0];
-          setPkg({
-            name: apiPkg.name || DEFAULT_PACKAGE.name,
-            tagline: apiPkg.tagline || DEFAULT_PACKAGE.tagline,
-            description: apiPkg.description || DEFAULT_PACKAGE.description,
-            monthlyPrice: apiPkg.monthlyPrice || apiPkg.price || DEFAULT_PACKAGE.monthlyPrice,
-            features: apiPkg.features?.map((f, i) => ({
-              text: typeof f === 'string' ? f : f.text,
-              icon: DEFAULT_PACKAGE.features[i]?.icon || 'crown'
-            })) || DEFAULT_PACKAGE.features,
-            durations: apiPkg.durations || DEFAULT_PACKAGE.durations
-          });
-          setSelectedDuration(apiPkg.durations?.[0] || DEFAULT_PACKAGE.durations[0]);
-        }
-      }
-
-      const settingsResponse = await fetch(`${import.meta.env.VITE_API_URL || ''}/settings/payment`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (settingsResponse.ok) {
-        const settingsData = await settingsResponse.json();
-        if (settingsData.data) {
-          setPaymentSettings({
-            creditCardLink: settingsData.data.creditCardLink || DEFAULT_PAYMENT_SETTINGS.creditCardLink,
-            bankTransfer: settingsData.data.bankTransfer || DEFAULT_PAYMENT_SETTINGS.bankTransfer,
-            cryptoWallet: settingsData.data.cryptoWallet || DEFAULT_PAYMENT_SETTINGS.cryptoWallet
-          });
+      if (token) {
+        const settingsResponse = await fetch(`${import.meta.env.VITE_API_URL || ''}/settings/payment`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (settingsResponse.ok) {
+          const settingsData = await settingsResponse.json();
+          if (settingsData.data) {
+            setPaymentSettings({
+              creditCardLink: settingsData.data.creditCardLink || DEFAULT_PAYMENT_SETTINGS.creditCardLink,
+              bankTransfer: settingsData.data.bankTransfer || DEFAULT_PAYMENT_SETTINGS.bankTransfer,
+              cryptoWallet: settingsData.data.cryptoWallet || DEFAULT_PAYMENT_SETTINGS.cryptoWallet
+            });
+          }
         }
       }
 
@@ -473,6 +498,10 @@ function ProfilePackages() {
       }
     } catch (error) {
       console.error('Data load error:', error);
+      // Hata durumunda admin paketlerini kullan
+      const adminPackages = loadPackagesFromAdmin();
+      setPkg(adminPackages);
+      setSelectedDuration(adminPackages.durations?.[0]);
     } finally {
       setLoading(false);
     }
