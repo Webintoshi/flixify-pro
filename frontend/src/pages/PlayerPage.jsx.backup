@@ -286,12 +286,12 @@ function PlayerPage() {
     }
   }, [videoMode, videoUrl])
 
-  // Controls visibility - 3 seconds auto-hide
+  // Controls visibility
   const handleMouseMove = () => {
     setShowControls(true)
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current)
     controlsTimeoutRef.current = setTimeout(() => {
-      setShowControls(false)
+      if (isPlaying) setShowControls(false)
     }, 3000)
   }
 
@@ -534,43 +534,9 @@ function PlayerPage() {
 
   // Keyboard controls
   useEffect(() => {
+    if (videoMode === 'live') return
     const handleKeyDown = (e) => {
       const video = videoRef.current
-      
-      // Live TV mode - Channel switching with arrow keys
-      if (videoMode === 'live') {
-        if (e.code === 'ArrowRight') {
-          e.preventDefault()
-          // Next channel
-          const currentIndex = channels.findIndex(ch => ch.name === currentChannel?.name)
-          if (currentIndex < channels.length - 1) {
-            setCurrentChannel(channels[currentIndex + 1])
-            setLoading(true)
-            setError(null)
-          }
-        } else if (e.code === 'ArrowLeft') {
-          e.preventDefault()
-          // Previous channel
-          const currentIndex = channels.findIndex(ch => ch.name === currentChannel?.name)
-          if (currentIndex > 0) {
-            setCurrentChannel(channels[currentIndex - 1])
-            setLoading(true)
-            setError(null)
-          }
-        } else if (e.code === 'KeyF') {
-          e.preventDefault()
-          toggleFullscreen()
-        } else if (e.code === 'KeyM' && video) {
-          e.preventDefault()
-          video.muted = !video.muted
-          setIsMuted(video.muted)
-        } else if (e.code === 'Escape') {
-          if (document.fullscreenElement) document.exitFullscreen()
-        }
-        return
-      }
-      
-      // Movie/Series mode
       if (!video) return
       if (videoMode !== 'movie' && videoMode !== 'series') return
       
@@ -613,7 +579,7 @@ function PlayerPage() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [videoMode, isPlaying, channels, currentChannel])
+  }, [videoMode, isPlaying])
 
   // Live TV Player
   useEffect(() => {
@@ -956,7 +922,7 @@ function PlayerPage() {
               <div 
                 className={`bg-black relative ${isFullscreen ? 'fixed inset-0 z-50' : 'aspect-video rounded-3xl overflow-hidden'}`}
                 onMouseMove={handleMouseMove}
-                onClick={() => setShowControls(true)}
+                onClick={toggleFullscreen}
               >
                 {loading && (
                   <div className="absolute inset-0 flex items-center justify-center z-10">
@@ -992,26 +958,54 @@ function PlayerPage() {
                   playsInline 
                 />
                 
-                {/* Controls - Modern Minimal Design */}
+                {/* Controls - Auto-hide in fullscreen */}
                 <div 
                   id="video-container"
-                  className={`absolute bottom-0 left-0 right-0 p-4 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}
+                  className={`absolute bottom-0 left-0 right-0 p-6 transition-opacity duration-500 ${showControls ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
                   style={{ 
-                    background: showControls ? 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)' : 'transparent',
+                    background: showControls ? 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 40%, transparent 100%)' : 'none',
                   }}
                 >
-                  <div className="flex items-center justify-center gap-6">
-                    {/* Volume Control - Hover to expand */}
-                    <div className="flex items-center group">
+                  {/* Kanal Bilgisi - Tam Ekranda Üstte */}
+                  {isFullscreen && currentChannel && (
+                    <div className="flex items-center gap-4 mb-6">
+                      {currentChannel.logo ? (
+                        <img 
+                          src={currentChannel.logo} 
+                          alt="" 
+                          className="w-12 h-12 object-contain rounded-xl p-1"
+                          style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
+                        />
+                      ) : (
+                        <div 
+                          className="w-12 h-12 rounded-xl flex items-center justify-center"
+                          style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
+                        >
+                          <Tv className="w-6 h-6 text-white/50" />
+                        </div>
+                      )}
+                      <div>
+                        <h2 className="text-xl font-bold text-white">{currentChannel.name}</h2>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-white/60">{currentChannel.group}</span>
+                          <span className="text-xs font-bold" style={{ color: '#46d369' }}>● CANLI</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
                       <button 
                         onClick={toggleMute}
-                        className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:bg-white/20"
+                        className="w-12 h-12 rounded-xl flex items-center justify-center transition-all hover:scale-110"
+                        style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
                       >
                         {isMuted ? <VolumeX className="w-5 h-5 text-white" /> : <Volume2 className="w-5 h-5 text-white" />}
                       </button>
                       
-                      {/* Volume Slider - Hidden by default, shows on hover */}
-                      <div className="w-0 overflow-hidden group-hover:w-24 transition-all duration-300 ease-out">
+                      {/* Volume Slider */}
+                      <div className="flex items-center gap-2 group">
                         <input
                           type="range"
                           min="0"
@@ -1019,7 +1013,7 @@ function PlayerPage() {
                           step="0.01"
                           value={isMuted ? 0 : volume}
                           onChange={handleVolumeChange}
-                          className="w-20 h-1 ml-2 rounded-full appearance-none cursor-pointer"
+                          className="w-24 h-1 rounded-full appearance-none cursor-pointer"
                           style={{ 
                             background: `linear-gradient(to right, ${PRIMARY} ${(isMuted ? 0 : volume) * 100}%, rgba(255,255,255,0.3) ${(isMuted ? 0 : volume) * 100}%)` 
                           }}
@@ -1027,10 +1021,10 @@ function PlayerPage() {
                       </div>
                     </div>
                     
-                    {/* Fullscreen Toggle */}
                     <button 
                       onClick={toggleFullscreen}
-                      className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:bg-white/20"
+                      className="w-12 h-12 rounded-xl flex items-center justify-center transition-all hover:scale-110"
+                      style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
                     >
                       {isFullscreen ? (
                         <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
