@@ -28,9 +28,10 @@ function createRoutes({
   subscriptionCheckMiddleware,
   rateLimiters,
   validators,
-  userRepository
+  userRepository,
+  supabaseClient
 }) {
-  const packageController = new PackageController();
+  const packageController = new PackageController(supabaseClient);
   const router = express.Router();
 
   // Health check (no auth required)

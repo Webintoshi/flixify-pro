@@ -235,7 +235,8 @@ async function startServer() {
     subscriptionCheckMiddleware,
     rateLimiters,
     validators,
-    userRepository
+    userRepository,
+    supabaseClient
   });
 
   app.use('/api/v1', routes);

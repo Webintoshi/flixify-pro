@@ -177,7 +177,20 @@ export const useAdminStore = create(
           const response = await fetch(`${API_URL}/admin/packages`, {
             headers: { 'Authorization': `Bearer ${adminToken}` }
           })
-          if (!response.ok) throw new Error('Paketler getirilemedi')
+          
+          if (!response.ok) {
+            // Try to parse error response for detailed message
+            let errorMessage = 'Paketler getirilemedi'
+            try {
+              const errorData = await response.json()
+              errorMessage = errorData.detail || errorData.message || errorMessage
+            } catch (parseError) {
+              // If parsing fails, use status text
+              errorMessage = `HTTP ${response.status}: ${response.statusText}`
+            }
+            throw new Error(errorMessage)
+          }
+          
           return await response.json()
         } catch (error) {
           console.error('Fetch packages error:', error)
@@ -188,13 +201,21 @@ export const useAdminStore = create(
       createPackage: async (packageData) => {
         const { adminToken } = get()
         try {
+          // Veritabanı yapısına uygun veri hazırla
+          const dbData = {
+            name: packageData.name,
+            description: packageData.description,
+            price: packageData.price,
+            duration_days: (packageData.duration || 1) * 30, // Ayı güne çevir
+          }
+          
           const response = await fetch(`${API_URL}/admin/packages`, {
             method: 'POST',
             headers: { 
               'Authorization': `Bearer ${adminToken}`,
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify(packageData)
+            body: JSON.stringify(dbData)
           })
           if (!response.ok) throw new Error('Paket oluşturulamadı')
           return await response.json()
@@ -207,13 +228,21 @@ export const useAdminStore = create(
       updatePackage: async (packageId, packageData) => {
         const { adminToken } = get()
         try {
+          // Veritabanı yapısına uygun veri hazırla
+          const dbData = {
+            name: packageData.name,
+            description: packageData.description,
+            price: packageData.price,
+            duration_days: (packageData.duration || 1) * 30, // Ayı güne çevir
+          }
+          
           const response = await fetch(`${API_URL}/admin/packages/${packageId}`, {
             method: 'PUT',
             headers: { 
               'Authorization': `Bearer ${adminToken}`,
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify(packageData)
+            body: JSON.stringify(dbData)
           })
           if (!response.ok) throw new Error('Paket güncellenemedi')
           return await response.json()

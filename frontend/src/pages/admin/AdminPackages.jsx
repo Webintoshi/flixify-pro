@@ -20,11 +20,14 @@ const PRIMARY = '#E50914'
 const BG_SURFACE = '#141414'
 const BORDER = '#2a2a2a'
 
-// API URL
-const API_URL = import.meta.env.VITE_API_URL || 'http://5.175.136.42:9199/api/v1'
-
 function AdminPackages() {
-  const { adminToken } = useAdminStore()
+  const { 
+    adminToken,
+    fetchPackages,
+    createPackage,
+    updatePackage,
+    deletePackage
+  } = useAdminStore()
   
   const [packages, setPackages] = useState([])
   const [loading, setLoading] = useState(true)
@@ -50,25 +53,75 @@ function AdminPackages() {
     loadPackages()
   }, [])
 
+  // Veritabanı verisini frontend formatına çevir
+  const normalizePackage = (pkg) => {
+    // duration_days -> duration (ay cinsinden)
+    const durationDays = pkg.duration_days || pkg.duration || 30
+    const duration = Math.ceil(durationDays / 30) // Günü aya çevir
+    
+    // Description'dan badge ve popülerlik bilgisi çıkar
+    const description = pkg.description || ''
+    const isPopular = description.toLowerCase().includes('popüler') || 
+                      description.toLowerCase().includes('en iyi') ||
+                      pkg.isPopular === true
+    
+    // Basit feature listesi oluştur (description'dan veya default)
+    let features = pkg.features || []
+    if (!features.length && description) {
+      // Description'dan özellikler çıkar
+      const lines = description.split(/[-,]/).map(s => s.trim()).filter(s => s)
+      if (lines.length > 1) {
+        features = lines.slice(0, 3) // İlk 3 özelliği al
+      } else {
+        features = [`${durationDays} gün erişim`, 'HD Kalite', '7/24 Destek']
+      }
+    }
+    
+    // Badge belirle
+    let badge = pkg.badge || ''
+    if (!badge) {
+      if (description.includes('%')) {
+        const match = description.match(/%\d+/)
+        if (match) badge = match[0] + ' İndirim'
+      } else if (isPopular) {
+        badge = 'Popüler'
+      }
+    }
+    
+    return {
+      id: pkg.id,
+      name: pkg.name,
+      description: description,
+      price: parseFloat(pkg.price) || 0,
+      duration: duration,
+      duration_days: durationDays, // Orijinal değeri de sakla
+      features: features,
+      badge: badge,
+      isPopular: isPopular,
+      isActive: pkg.isActive !== false, // Varsayılan true
+      created_at: pkg.created_at,
+      updated_at: pkg.updated_at
+    }
+  }
+
   const loadPackages = async () => {
     try {
       setLoading(true)
       setError(null)
       
-      const response = await fetch(`${API_URL}/admin/packages`, {
-        headers: { 'Authorization': `Bearer ${adminToken}` }
-      })
+      const result = await fetchPackages()
       
-      if (!response.ok) {
-        throw new Error('Paketler yüklenemedi')
-      }
+      // Backend'den gelen farklı yanıt formatlarını destekle
+      const rawPackages = result.data?.packages || result.packages || result.data || []
       
-      const data = await response.json()
-      setPackages(data.data?.packages || [])
+      // Veritabanı yapısını frontend yapısına çevir
+      const normalizedPackages = rawPackages.map(normalizePackage)
+      
+      setPackages(normalizedPackages)
       setLastUpdated(new Date())
     } catch (err) {
       console.error('Load packages error:', err)
-      setError(err.message)
+      setError(err.message || 'Paketler yüklenemedi')
       setPackages([])
     } finally {
       setLoading(false)
@@ -81,11 +134,11 @@ function AdminPackages() {
       name: pkg.name,
       description: pkg.description,
       price: pkg.price,
-      duration: pkg.duration,
-      features: [...pkg.features],
+      duration: pkg.duration || Math.ceil((pkg.duration_days || 30) / 30),
+      features: [...(pkg.features || [])],
       badge: pkg.badge || '',
-      isPopular: pkg.isPopular,
-      isActive: pkg.isActive
+      isPopular: pkg.isPopular || false,
+      isActive: pkg.isActive !== false
     })
     setShowModal(true)
   }
@@ -93,24 +146,10 @@ function AdminPackages() {
   const handleSave = async () => {
     setSaving(true)
     try {
-      const url = editingPackage 
-        ? `${API_URL}/admin/packages/${editingPackage.id}`
-        : `${API_URL}/admin/packages`
-      
-      const method = editingPackage ? 'PUT' : 'POST'
-      
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Authorization': `Bearer ${adminToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      })
-      
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Kaydetme başarısız')
+      if (editingPackage) {
+        await updatePackage(editingPackage.id, formData)
+      } else {
+        await createPackage(formData)
       }
       
       await loadPackages()
@@ -127,15 +166,7 @@ function AdminPackages() {
     if (!confirm(`"${pkg.name}" paketini silmek istediğinize emin misiniz?`)) return
     
     try {
-      const response = await fetch(`${API_URL}/admin/packages/${pkg.id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${adminToken}` }
-      })
-      
-      if (!response.ok) {
-        throw new Error('Silme başarısız')
-      }
-      
+      await deletePackage(pkg.id)
       await loadPackages()
     } catch (err) {
       console.error('Delete error:', err)
@@ -240,7 +271,7 @@ function AdminPackages() {
             }}
           >
             {/* Badge */}
-            {pkg.badge && (
+            {(pkg.badge || pkg.isPopular) && (
               <div 
                 className="px-4 py-1 text-center text-sm font-bold"
                 style={{ 
@@ -248,7 +279,7 @@ function AdminPackages() {
                   color: 'white'
                 }}
               >
-                {pkg.badge}
+                {pkg.badge || (pkg.isPopular ? 'Popüler' : '')}
               </div>
             )}
 
@@ -271,19 +302,25 @@ function AdminPackages() {
                 <span className="text-4xl font-black text-white">₺{pkg.price}</span>
               </div>
               <p className="text-gray-500 text-sm mt-1">
-                {pkg.duration} Ay
+                {pkg.duration || Math.ceil((pkg.duration_days || 30) / 30)} Ay
+                {pkg.duration_days && (
+                  <span className="text-gray-600 text-xs ml-1">({pkg.duration_days} gün)</span>
+                )}
               </p>
             </div>
 
             {/* Features */}
             <div className="p-6">
               <ul className="space-y-3">
-                {pkg.features?.map((feature, idx) => (
+                {(pkg.features || []).map((feature, idx) => (
                   <li key={idx} className="flex items-center gap-2 text-gray-300 text-sm">
                     <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: PRIMARY }} />
                     {feature}
                   </li>
                 ))}
+                {(!pkg.features || pkg.features.length === 0) && (
+                  <li className="text-gray-500 text-sm italic">Özellik bulunmuyor</li>
+                )}
               </ul>
             </div>
 

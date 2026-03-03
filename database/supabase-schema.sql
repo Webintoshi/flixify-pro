@@ -52,12 +52,15 @@ CREATE TABLE IF NOT EXISTS packages (
     duration_days INTEGER NOT NULL DEFAULT 30,
     features JSONB DEFAULT '[]'::jsonb,
     is_active BOOLEAN DEFAULT TRUE,
+    is_popular BOOLEAN DEFAULT FALSE,
+    badge VARCHAR(50),
     sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 CREATE INDEX idx_packages_is_active ON packages(is_active);
+CREATE INDEX idx_packages_sort_order ON packages(sort_order);
 
 -- ============================================
 -- 4. PAYMENTS TABLE
@@ -142,6 +145,10 @@ CREATE POLICY "Admins full access on admins" ON admins
 CREATE POLICY "Admins full access on packages" ON packages
     FOR ALL USING (auth.role() = 'service_role');
 
+-- Public: Everyone can view active packages (for pricing page)
+CREATE POLICY "Public can view active packages" ON packages
+    FOR SELECT USING (is_active = true);
+
 CREATE POLICY "Admins full access on payments" ON payments
     FOR ALL USING (auth.role() = 'service_role');
 
@@ -179,12 +186,12 @@ VALUES (
 )
 ON CONFLICT (email) DO NOTHING;
 
--- Insert default packages
-INSERT INTO packages (name, description, price, duration_days, features, sort_order)
+-- Insert default packages (with proper is_popular and badge)
+INSERT INTO packages (name, description, price, duration_days, features, sort_order, is_popular, badge)
 VALUES 
-    ('Temel', 'Temel paket ile başlayın', 50, 30, '["100+ Kanal", "SD Kalite"]', 1),
-    ('Standart', 'En popüler paket', 100, 30, '["500+ Kanal", "HD Kalite", "Film & Dizi"]', 2),
-    ('Premium', 'Tam deneyim', 150, 30, '["1000+ Kanal", "4K Kalite", "Film & Dizi", "Canlı Spor"]', 3),
-    ('Aile', 'Aile boyu eğlence', 200, 30, '["1000+ Kanal", "4K Kalite", "Çocuk Kanalları", "Eşzamanlı 4 Cihaz"]', 4)
+    ('Temel', 'Temel paket ile başlayın', 50, 30, '["100+ Kanal", "SD Kalite"]', 1, false, null),
+    ('Standart', 'En popüler paket', 100, 30, '["500+ Kanal", "HD Kalite", "Film & Dizi"]', 2, false, null),
+    ('Premium', 'Tam deneyim', 150, 30, '["1000+ Kanal", "4K Kalite", "Film & Dizi", "Canlı Spor"]', 3, true, 'Popüler'),
+    ('Aile', 'Aile boyu eğlence', 200, 30, '["1000+ Kanal", "4K Kalite", "Çocuk Kanalları", "Eşzamanlı 4 Cihaz"]', 4, false, 'En İyi')
 ON CONFLICT DO NOTHING;
 

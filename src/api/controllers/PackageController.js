@@ -1,8 +1,8 @@
 const SupabasePackageRepository = require('../../infrastructure/persistence/SupabasePackageRepository')
 
 class PackageController {
-  constructor() {
-    this.packageRepo = new SupabasePackageRepository()
+  constructor(supabaseClient) {
+    this.packageRepo = new SupabasePackageRepository(supabaseClient)
   }
 
   // GET /api/v1/packages/public - Get all active packages (public)
@@ -18,10 +18,12 @@ class PackageController {
             name: p.name,
             description: p.description,
             price: p.price,
-            duration: p.duration,
+            duration: p.durationMonths,  // Ay olarak (1, 3, 6, 12)
+            duration_days: p.duration_days,  // Gün olarak (30, 90, 180, 365)
             features: p.features,
             badge: p.badge,
-            isPopular: p.isPopular
+            isPopular: p.isPopular,
+            is_active: p.isActive
           }))
         }
       })
@@ -47,11 +49,15 @@ class PackageController {
             name: p.name,
             description: p.description,
             price: p.price,
-            duration: p.duration,
+            duration: p.durationMonths,  // Ay olarak (1, 3, 6, 12)
+            duration_days: p.duration_days,  // Gün olarak (30, 90, 180, 365)
             features: p.features,
             badge: p.badge,
             isPopular: p.isPopular,
-            isActive: p.isActive
+            isActive: p.isActive,
+            sort_order: p.sort_order,
+            created_at: p.createdAt,
+            updated_at: p.updatedAt
           }))
         }
       })
