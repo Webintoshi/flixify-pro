@@ -4,13 +4,13 @@ import { useEffect, useState } from 'react'
 import Logo from './Logo'
 
 function ProtectedRoute({ children }) {
-  const { token, syncToken } = useAuthStore()
+  const { token, restoreAuth } = useAuthStore()
   const location = useLocation()
   const [isChecking, setIsChecking] = useState(true)
   const [hasToken, setHasToken] = useState(false)
 
   useEffect(() => {
-    // Check localStorage directly for token
+    // Check localStorage directly and restore auth state
     const checkAuth = () => {
       try {
         const stored = localStorage.getItem('iptv-auth-storage')
@@ -18,7 +18,8 @@ function ProtectedRoute({ children }) {
           const parsed = JSON.parse(stored)
           if (parsed.state?.token) {
             setHasToken(true)
-            syncToken() // Sync to API headers
+            // Restore both token and user to Zustand store
+            restoreAuth(parsed.state.token, parsed.state.user)
           }
         }
       } catch (e) {
@@ -28,7 +29,7 @@ function ProtectedRoute({ children }) {
     }
 
     checkAuth()
-  }, [syncToken])
+  }, [restoreAuth])
 
   // Show loading while checking localStorage
   if (isChecking) {

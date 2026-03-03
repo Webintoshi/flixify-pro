@@ -77,14 +77,20 @@ export const useAuthStore = create(
       clearError: () => set({ error: null }),
 
       // Sync token to API headers (call this before making authenticated requests)
-      syncToken: () => {
-        const token = get().token
+      syncToken: (externalToken) => {
+        const token = externalToken || get().token
         if (token) {
           api.defaults.headers.common['Authorization'] = `Bearer ${token}`
           return true
         }
         return false
       },
+
+      // Restore auth state from storage (used on page refresh)
+      restoreAuth: (token, user) => {
+        set({ token, user })
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+      }
 
       // Get authentication status (getter, not function)
       get isAuthenticated() {
