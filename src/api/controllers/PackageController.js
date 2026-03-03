@@ -78,7 +78,7 @@ class PackageController {
       console.error('Create package error:', error)
       res.status(500).json({
         status: 'error',
-        message: 'Paket oluşturulamadı'
+        message: 'Paket oluşturulamadı: ' + error.message
       })
     }
   }
@@ -98,7 +98,7 @@ class PackageController {
       console.error('Update package error:', error)
       res.status(500).json({
         status: 'error',
-        message: 'Paket güncellenemedi'
+        message: 'Paket güncellenemedi: ' + error.message
       })
     }
   }
@@ -117,7 +117,7 @@ class PackageController {
       console.error('Delete package error:', error)
       res.status(500).json({
         status: 'error',
-        message: 'Paket silinemedi'
+        message: 'Paket silinemedi: ' + error.message
       })
     }
   }

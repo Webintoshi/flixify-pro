@@ -62,25 +62,28 @@ class SupabasePackageRepository extends PackageRepository {
   }
 
   async update(id, packageData) {
+    // Önce mevcut kaydı oku (eksik alanlar için)
+    const existing = await this.findById(id)
+    if (!existing) throw new Error('Package not found')
+    
     // duration ay olarak geliyorsa gün'e çevir (30 gün = 1 ay)
-    const durationInput = packageData.duration_days || packageData.duration
-    const durationDays = durationInput && durationInput <= 12 ? durationInput * 30 : durationInput
+    // Eğer duration gönderilmemişse mevcut değeri koru
+    let durationDays = existing.duration_days
+    if (packageData.duration_days !== undefined || packageData.duration !== undefined) {
+      const durationInput = packageData.duration_days || packageData.duration
+      durationDays = durationInput && durationInput <= 12 ? durationInput * 30 : durationInput
+    }
     
     // Veritabanı yapısına uygun alanlar
     const dbData = {
-      name: packageData.name,
-      description: packageData.description,
-      price: packageData.price,
+      name: packageData.name !== undefined ? packageData.name : existing.name,
+      description: packageData.description !== undefined ? packageData.description : existing.description,
+      price: packageData.price !== undefined ? packageData.price : existing.price,
       duration_days: durationDays,
-      features: packageData.features,
-      is_active: packageData.isActive,
-      sort_order: packageData.sort_order !== undefined ? packageData.sort_order : (durationDays ? this._calculateSortOrder(durationDays) : undefined)
+      features: packageData.features !== undefined ? packageData.features : existing.features,
+      is_active: packageData.isActive !== undefined ? packageData.isActive : existing.isActive,
+      sort_order: packageData.sort_order !== undefined ? packageData.sort_order : this._calculateSortOrder(durationDays)
     }
-
-    // undefined değerleri temizle
-    Object.keys(dbData).forEach(key => {
-      if (dbData[key] === undefined) delete dbData[key]
-    })
 
     const { data, error } = await supabase
       .from('packages')
