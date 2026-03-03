@@ -90,7 +90,7 @@ export const useAuthStore = create(
       restoreAuth: (token, user) => {
         set({ token, user })
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`
-      }
+      },
 
       // Get authentication status (getter, not function)
       get isAuthenticated() {
