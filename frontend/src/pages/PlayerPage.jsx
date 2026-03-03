@@ -322,7 +322,7 @@ function PlayerPage() {
   }
 
   const toggleFullscreen = () => {
-    const videoContainer = document.getElementById('video-container')
+    const videoContainer = document.getElementById('video-player-wrapper')
     if (!videoContainer) return
     if (!document.fullscreenElement) {
       videoContainer.requestFullscreen().catch(() => {})
@@ -670,7 +670,7 @@ function PlayerPage() {
         onMouseMove={handleMouseMove}
         onClick={() => !showControls && setShowControls(true)}
       >
-        <div id="video-container" className="relative w-full h-full">
+        <div id="video-player-wrapper" className="relative w-full h-full">
           {loading && (
             <div className="absolute inset-0 flex items-center justify-center bg-black z-20">
               <div className="w-16 h-16 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: PRIMARY }} />
@@ -899,18 +899,18 @@ function PlayerPage() {
         {/* Video ve Kanal Listesi - Yatay Layout */}
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Video Player - Sinematik */}
-          <div className="lg:col-span-2">
+          <div className={`${isFullscreen ? 'fixed inset-0 z-50' : 'lg:col-span-2'}`}>
             <div 
-              id="video-container"
-              className="rounded-3xl overflow-hidden shadow-2xl"
-              style={{ 
+              id="video-player-wrapper"
+              className={`${isFullscreen ? 'w-full h-full bg-black' : 'rounded-3xl overflow-hidden shadow-2xl'}`}
+              style={!isFullscreen ? { 
                 backgroundColor: BG_CARD, 
                 border: `2px solid ${BORDER}`,
                 boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'
-              }}
+              } : {}}
             >
               <div 
-                className="aspect-video bg-black relative"
+                className={`bg-black relative ${isFullscreen ? 'w-full h-full' : 'aspect-video'}`}
                 onMouseMove={handleMouseMove}
                 onClick={() => !showControls && setShowControls(true)}
               >
@@ -941,42 +941,96 @@ function PlayerPage() {
                   </div>
                 )}
                 
-                <video ref={videoRef} className="w-full h-full object-contain" autoPlay playsInline />
-                
-                {/* Glow Effect */}
-                <div 
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    background: 'radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.4) 100%)'
-                  }}
+                <video 
+                  ref={videoRef} 
+                  className={`${isFullscreen ? 'w-full h-full' : 'w-full h-full'} object-contain`} 
+                  autoPlay 
+                  playsInline 
                 />
                 
-                {/* Controls - Auto-hide */}
+                {/* Controls - Auto-hide in fullscreen */}
                 <div 
-                  className={`absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}
+                  id="video-container"
+                  className={`absolute bottom-0 left-0 right-0 p-6 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}
+                  style={{ 
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.6) 50%, transparent 100%)',
+                  }}
                   onMouseMove={handleMouseMove}
                 >
+                  {/* Kanal Bilgisi - Tam Ekranda Üstte */}
+                  {isFullscreen && currentChannel && (
+                    <div className="flex items-center gap-4 mb-6">
+                      {currentChannel.logo ? (
+                        <img 
+                          src={currentChannel.logo} 
+                          alt="" 
+                          className="w-12 h-12 object-contain rounded-xl p-1"
+                          style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
+                        />
+                      ) : (
+                        <div 
+                          className="w-12 h-12 rounded-xl flex items-center justify-center"
+                          style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
+                        >
+                          <Tv className="w-6 h-6 text-white/50" />
+                        </div>
+                      )}
+                      <div>
+                        <h2 className="text-xl font-bold text-white">{currentChannel.name}</h2>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-white/60">{currentChannel.group}</span>
+                          <span className="text-xs font-bold" style={{ color: '#46d369' }}>● CANLI</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="flex items-center justify-between">
-                    <button 
-                      onClick={toggleMute}
-                      className="w-14 h-14 rounded-2xl flex items-center justify-center transition-all hover:scale-110"
-                      style={{ backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)' }}
-                    >
-                      {isMuted ? <VolumeX className="w-6 h-6 text-white" /> : <Volume2 className="w-6 h-6 text-white" />}
-                    </button>
+                    <div className="flex items-center gap-4">
+                      <button 
+                        onClick={toggleMute}
+                        className="w-12 h-12 rounded-xl flex items-center justify-center transition-all hover:scale-110"
+                        style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
+                      >
+                        {isMuted ? <VolumeX className="w-5 h-5 text-white" /> : <Volume2 className="w-5 h-5 text-white" />}
+                      </button>
+                      
+                      {/* Volume Slider */}
+                      <div className="flex items-center gap-2 group">
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.01"
+                          value={isMuted ? 0 : volume}
+                          onChange={handleVolumeChange}
+                          className="w-24 h-1 rounded-full appearance-none cursor-pointer"
+                          style={{ 
+                            background: `linear-gradient(to right, ${PRIMARY} ${(isMuted ? 0 : volume) * 100}%, rgba(255,255,255,0.3) ${(isMuted ? 0 : volume) * 100}%)` 
+                          }}
+                        />
+                      </div>
+                    </div>
+                    
                     <button 
                       onClick={toggleFullscreen}
-                      className="w-14 h-14 rounded-2xl flex items-center justify-center transition-all hover:scale-110"
-                      style={{ backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)' }}
+                      className="w-12 h-12 rounded-xl flex items-center justify-center transition-all hover:scale-110"
+                      style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
                     >
-                      <Maximize className="w-6 h-6 text-white" />
+                      {isFullscreen ? (
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      ) : (
+                        <Maximize className="w-5 h-5 text-white" />
+                      )}
                     </button>
                   </div>
                 </div>
               </div>
               
-              {/* Kanal Bilgisi - Modern */}
-              {currentChannel && (
+              {/* Kanal Bilgisi - Normal Mod (Fullscreen'de gizli) */}
+              {!isFullscreen && currentChannel && (
                 <div className="p-5 flex items-center gap-5">
                   {currentChannel.logo ? (
                     <div className="relative">
