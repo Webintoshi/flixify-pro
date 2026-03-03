@@ -60,10 +60,13 @@ function AdminUsers() {
   useEffect(() => {
     loadData()
     
-    // Auto-refresh every 30 seconds
+    // Auto-refresh every 60 seconds (slower to avoid rate limit)
     const interval = setInterval(() => {
-      loadData(true) // silent refresh (no loading spinner)
-    }, 30000)
+      // Only refresh if page is visible
+      if (!document.hidden) {
+        loadData(true) // silent refresh (no loading spinner)
+      }
+    }, 60000)
     
     return () => clearInterval(interval)
   }, [])

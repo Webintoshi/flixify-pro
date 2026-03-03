@@ -410,10 +410,13 @@ function ProfilePackages() {
   useEffect(() => {
     loadData();
     
-    // Auto-refresh user data every 10 seconds to check for package/M3U updates
+    // Auto-refresh user data every 60 seconds (slower to avoid rate limit)
     const interval = setInterval(() => {
-      fetchUser();
-    }, 10000);
+      // Only fetch if page is visible (not in background)
+      if (!document.hidden) {
+        fetchUser();
+      }
+    }, 60000); // 60 seconds
     
     return () => clearInterval(interval);
   }, [fetchUser]);
