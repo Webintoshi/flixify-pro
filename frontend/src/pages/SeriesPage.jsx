@@ -74,6 +74,22 @@ const parseSeriesFromM3U = (content) => {
   return episodes;
 };
 
+// Platform bazlı varsayılan dizi görselleri
+const PLATFORM_POSTERS = {
+  'Netflix Dizileri': 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=500&h=750&fit=crop',
+  'Disney+ Dizileri': 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&h=750&fit=crop',
+  'Amazon Prime Dizileri': 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&h=750&fit=crop',
+  'TV+ Dizileri': 'https://images.unsplash.com/photo-1522869635100-9f4c5e86aa37?w=500&h=750&fit=crop',
+  'TOD (beIN) Dizileri': 'https://images.unsplash.com/photo-1560272564-c83b66b1ad12?w=500&h=750&fit=crop',
+  'BluTV Dizileri (HBO)': 'https://images.unsplash.com/photo-1485846234645-a62644f84728?w=500&h=750&fit=crop',
+  'Apple TV+ Dizileri': 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&h=750&fit=crop',
+  'GAİN Dizileri': 'https://images.unsplash.com/photo-1509347528160-9a9e33742cdb?w=500&h=750&fit=crop',
+  'Exxen Dizileri': 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&h=750&fit=crop',
+  'Günlük Diziler': 'https://images.unsplash.com/photo-1535016120720-40c646be5580?w=500&h=750&fit=crop',
+  'Anime': 'https://images.unsplash.com/photo-1541562232579-512a21360020?w=500&h=750&fit=crop',
+  'default': 'https://images.unsplash.com/photo-1535016120720-40c646be5580?w=500&h=750&fit=crop'
+};
+
 // Group episodes by series
 const groupBySeries = (episodes) => {
   const seriesMap = {};
@@ -84,9 +100,14 @@ const groupBySeries = (episodes) => {
       seriesMap[key] = {
         name: ep.seriesName,
         genre: ep.genre,
-        logo: ep.logo,
+        logo: ep.logo, // İlk bölümün logosu
         seasons: {}
       };
+    }
+    
+    // Eğer bu bölümde logo var ve seride logo yoksa, kullan
+    if (ep.logo && !seriesMap[key].logo) {
+      seriesMap[key].logo = ep.logo;
     }
     
     if (!seriesMap[key].seasons[ep.season]) {
@@ -100,6 +121,11 @@ const groupBySeries = (episodes) => {
     Object.keys(series.seasons).forEach(season => {
       series.seasons[season].sort((a, b) => a.episode - b.episode);
     });
+    
+    // Logo yoksa platform bazlı varsayılan kullan
+    if (!series.logo) {
+      series.logo = PLATFORM_POSTERS[series.genre] || PLATFORM_POSTERS['default'];
+    }
   });
   
   return Object.values(seriesMap);
@@ -114,9 +140,18 @@ const SeriesCard = ({ series, onClick }) => {
   const totalEpisodes = Object.values(series.seasons).flat().length;
   const platform = PLATFORMS.find(p => p.id === series.genre) || PLATFORMS[0];
   
-  const posterUrl = imageError || !series.logo 
-    ? 'https://images.unsplash.com/photo-1535016120720-40c646be5580?w=500&h=750&fit=crop'
-    : series.logo;
+  // Platform bazlı varsayılan görsel veya M3U'dan gelen logo
+  const getPosterUrl = () => {
+    if (imageError) {
+      return PLATFORM_POSTERS[series.genre] || PLATFORM_POSTERS['default'];
+    }
+    if (!series.logo || series.logo === '') {
+      return PLATFORM_POSTERS[series.genre] || PLATFORM_POSTERS['default'];
+    }
+    return series.logo;
+  };
+  
+  const posterUrl = getPosterUrl();
   
   return (
     <div 
@@ -264,11 +299,14 @@ const HeroSection = ({ series, onPlay }) => {
   const seasonCount = Object.keys(series.seasons).length;
   const platform = PLATFORMS.find(p => p.id === series.genre) || PLATFORMS[0];
   
+  // Platform bazlı hero görseli
+  const heroBgUrl = series.logo || PLATFORM_POSTERS[series.genre] || PLATFORM_POSTERS['default'];
+  
   return (
     <div 
       className="relative rounded-3xl overflow-hidden mb-10"
       style={{ 
-        backgroundImage: `linear-gradient(to right, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 50%, transparent 100%), url(${series.logo || 'https://images.unsplash.com/photo-1535016120720-40c646be5580?w=1920&h=1080&fit=crop'})`,
+        backgroundImage: `linear-gradient(to right, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 50%, transparent 100%), url(${heroBgUrl})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         minHeight: '500px'
@@ -336,6 +374,9 @@ const SeriesDetailModal = ({ series, onClose, onPlayEpisode }) => {
   const episodes = series.seasons[selectedSeason] || [];
   const platform = PLATFORMS.find(p => p.id === series.genre) || PLATFORMS[0];
   
+  // Platform bazlı modal hero görseli
+  const modalBgUrl = series.logo || PLATFORM_POSTERS[series.genre] || PLATFORM_POSTERS['default'];
+  
   return (
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -351,7 +392,7 @@ const SeriesDetailModal = ({ series, onClose, onPlayEpisode }) => {
         <div 
           className="relative h-80"
           style={{
-            backgroundImage: `linear-gradient(to bottom, rgba(20,20,20,0.3) 0%, rgba(20,20,20,0.9) 100%), url(${series.logo || 'https://images.unsplash.com/photo-1535016120720-40c646be5580?w=1200&h=600&fit=crop'})`,
+            backgroundImage: `linear-gradient(to bottom, rgba(20,20,20,0.3) 0%, rgba(20,20,20,0.9) 100%), url(${modalBgUrl})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center'
           }}
