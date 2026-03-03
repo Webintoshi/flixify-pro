@@ -569,12 +569,72 @@ class AdminController {
 
   /**
    * GET /admin/packages
-   * List all packages
+   * List all packages - STATIK (Database bypass)
    */
   getPackages = asyncHandler(async (req, res) => {
-    const { data: packages, error } = await this._adminRepository.getPackages();
-    
-    if (error) throw error;
+    // Veritabanından almak yerine statik paketler
+    const packages = [
+      {
+        id: '33d43b01-397f-4656-846f-d08da9c96cdf',
+        name: '1 Aylık Paket',
+        description: '30 gün erişim - Temel paket',
+        price: 199.00,
+        duration: 1,
+        duration_days: 30,
+        features: ['30 gün erişim', 'HD Kalite', '7/24 Destek'],
+        badge: null,
+        isPopular: false,
+        isActive: true,
+        sort_order: 1,
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z'
+      },
+      {
+        id: 'b41ecdb8-9618-4f65-901a-862e987c3063',
+        name: '3 Aylık Paket',
+        description: '90 gün erişim - %5 İndirimli',
+        price: 485.00,
+        duration: 3,
+        duration_days: 90,
+        features: ['90 gün erişim', 'HD Kalite', '7/24 Destek', '%5 İndirim'],
+        badge: '%5 İndirim',
+        isPopular: false,
+        isActive: true,
+        sort_order: 2,
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z'
+      },
+      {
+        id: '1aa84dca-7a5a-4af7-946d-3ca1ffa0e8b9',
+        name: '6 Aylık Paket',
+        description: '180 gün erişim - %10 İndirimli - Popüler',
+        price: 820.00,
+        duration: 6,
+        duration_days: 180,
+        features: ['180 gün erişim', 'HD Kalite', '7/24 Destek', '%10 İndirim', 'Popüler'],
+        badge: 'Popüler',
+        isPopular: true,
+        isActive: true,
+        sort_order: 3,
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z'
+      },
+      {
+        id: '623816cc-acab-43c8-a0b5-f1cdfa686def',
+        name: '12 Aylık Paket',
+        description: '365 gün erişim - %20 İndirimli - En İyi Fiyat',
+        price: 1490.00,
+        duration: 12,
+        duration_days: 365,
+        features: ['365 gün erişim', 'HD Kalite', '7/24 Destek', '%20 İndirim', 'En İyi Fiyat'],
+        badge: 'En İyi Fiyat',
+        isPopular: false,
+        isActive: true,
+        sort_order: 4,
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z'
+      }
+    ];
 
     res.json({
       status: 'success',

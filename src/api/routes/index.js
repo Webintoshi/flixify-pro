@@ -31,7 +31,8 @@ function createRoutes({
   userRepository,
   supabaseClient
 }) {
-  const packageController = new PackageController(supabaseClient);
+  // Statik paketler için database bağlantısı gerekmez
+  const packageController = new PackageController();
   const router = express.Router();
 
   // Health check (no auth required)
