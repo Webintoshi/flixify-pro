@@ -14,7 +14,6 @@ import {
   X
 } from 'lucide-react'
 
-// Renk tanımları
 const PRIMARY = '#E50914'
 const BG_DARK = '#0a0a0a'
 const BG_SURFACE = '#1a1a1a'
@@ -43,7 +42,7 @@ function Layout() {
   ]
 
   const handleLogout = () => {
-    if (confirm('Çıkış yapmak istediğinize emin misiniz?')) {
+    if (confirm('Cikis yapmak istediginize emin misiniz?')) {
       logout()
       navigate('/')
     }
@@ -53,7 +52,7 @@ function Layout() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: BG_DARK, color: 'white' }}>
-      {/* Header */}
+      {/* Header - Responsive Heights */}
       <header 
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           isScrolled 
@@ -65,71 +64,55 @@ function Layout() {
           borderColor: BORDER 
         } : {}}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-16">
-          <div className="flex items-center justify-between h-16 lg:h-20">
-            {/* Logo */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-16 xl:px-24">
+          <div className="flex items-center justify-between h-16 lg:h-20 xl:h-24">
             <Logo to="/home" />
             
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-8">
+            <nav className="hidden md:flex items-center gap-6 lg:gap-8 xl:gap-10">
               {navItems.map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`relative text-sm font-medium transition-colors ${
-                    isActive(item.path) 
-                      ? 'text-white' 
-                      : 'text-white/70 hover:text-white'
+                  className={`relative font-medium transition-colors text-sm lg:text-base xl:text-lg ${
+                    isActive(item.path) ? 'text-white' : 'text-white/70 hover:text-white'
                   }`}
                 >
                   {item.label}
                   {isActive(item.path) && (
-                    <span 
-                      className="absolute -bottom-1 left-0 right-0 h-0.5 rounded-full"
-                      style={{ backgroundColor: PRIMARY }}
-                    />
+                    <span className="absolute -bottom-1 left-0 right-0 h-0.5 xl:h-1 rounded-full" style={{ backgroundColor: PRIMARY }} />
                   )}
                 </Link>
               ))}
             </nav>
 
             {/* User Menu */}
-            <div className="flex items-center gap-4">
-              {/* User Code */}
-              <div className="hidden sm:flex items-center gap-3">
+            <div className="flex items-center gap-3 lg:gap-4 xl:gap-6">
+              <div className="hidden sm:flex items-center gap-2 lg:gap-3">
                 <Link 
                   to="/profil"
-                  className={`flex items-center gap-2 text-sm font-medium transition-colors ${
-                    isActive('/profil') 
-                      ? 'text-white' 
-                      : 'text-white/70 hover:text-white'
+                  className={`flex items-center gap-2 font-medium transition-colors text-sm lg:text-base xl:text-lg ${
+                    isActive('/profil') ? 'text-white' : 'text-white/70 hover:text-white'
                   }`}
                 >
-                  <div 
-                    className="w-8 h-8 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: BG_SURFACE, border: `1px solid ${BORDER}` }}
-                  >
-                    <User className="w-4 h-4" />
+                  <div className="w-8 h-8 lg:w-9 lg:h-9 xl:w-11 xl:h-11 rounded-full flex items-center justify-center" style={{ backgroundColor: BG_SURFACE, border: `1px solid ${BORDER}` }}>
+                    <User className="w-4 h-4 xl:w-5 xl:h-5" />
                   </div>
                   <span className="hidden lg:inline">{user?.code}</span>
                 </Link>
               </div>
 
-              {/* Logout Button */}
               <button
                 onClick={handleLogout}
-                className="hidden md:flex items-center gap-2 text-sm font-medium text-white/70 hover:text-white transition-colors px-3 py-2 rounded-lg"
-                style={{ hover: { backgroundColor: 'rgba(255,255,255,0.05)' } }}
+                className="hidden md:flex items-center gap-2 font-medium text-white/70 hover:text-white transition-colors rounded-lg hover:bg-white/5 text-sm lg:text-base xl:text-lg px-3 py-2"
               >
-                <LogOut className="w-4 h-4" />
-                <span>Çıkış</span>
+                <LogOut className="w-4 h-4 xl:w-5 xl:h-5" />
+                <span className="hidden lg:inline">Cikis</span>
               </button>
 
-              {/* Mobile Menu Toggle */}
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="md:hidden p-2 rounded-lg transition-colors"
-                style={{ hover: { backgroundColor: 'rgba(255,255,255,0.05)' } }}
+                className="md:hidden p-2 rounded-lg transition-colors hover:bg-white/5"
               >
                 {isMobileMenuOpen ? (
                   <X className="w-6 h-6" />
@@ -193,7 +176,7 @@ function Layout() {
                 }}
               >
                 <Settings className="w-5 h-5" />
-                Yönetim
+                Yonetim
               </Link>
             )}
             
@@ -205,14 +188,14 @@ function Layout() {
               style={{ color: PRIMARY }}
             >
               <LogOut className="w-5 h-5" />
-              Çıkış Yap
+              Cikis Yap
             </button>
           </nav>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="pt-16 lg:pt-20">
+      {/* Main Content - Responsive padding-top */}
+      <main className="pt-16 lg:pt-20 xl:pt-24">
         <Outlet />
       </main>
     </div>

@@ -7,6 +7,10 @@
    Primary Color: #E50914 (Netflix Red)
    ============================================ */
 
+/* Import Responsive System */
+@import './styles/responsive.css';
+@import './styles/profile-responsive.css';
+
 :root {
   --flix-primary: #E50914;
   --flix-primary-hover: #F40612;
