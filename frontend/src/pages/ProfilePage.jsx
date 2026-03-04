@@ -54,41 +54,26 @@ function ProfilePage() {
     }
   }, [user?.expiresAt]);
 
-  const handleCopyCode = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (!rawCode) {
-      console.warn('Kopyalanacak kod yok');
-      return;
-    }
+  const handleCopyCode = async () => {
+    if (!rawCode) return;
     
     try {
-      // Modern clipboard API
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(rawCode);
-      } else {
-        // Fallback for older browsers
-        const textArea = document.createElement('textarea');
-        textArea.value = rawCode;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-999999px';
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        
-        const successful = document.execCommand('copy');
-        document.body.removeChild(textArea);
-        
-        if (!successful) throw new Error('execCommand failed');
-      }
-      
+      await navigator.clipboard.writeText(rawCode);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(false), 1500);
     } catch (err) {
       console.error('Kopyalama hatasi:', err);
-      // Fallback: prompt ile göster
-      window.prompt('Kodunuzu kopyalayın:', rawCode);
+      // Fallback
+      const textArea = document.createElement('textarea');
+      textArea.value = rawCode;
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
     }
   };
 
@@ -102,26 +87,20 @@ function ProfilePage() {
           </div>
           <div className="profile-info-compact">
             <span className="profile-name">Profilim</span>
-            <div 
-              className="profile-code-wrapper"
-              onClick={handleCopyCode}
-              title="Kodu kopyalamak için tıklayın"
-              style={{ cursor: 'pointer' }}
-            >
-              <span className="profile-code-text">{formattedCode || 'Yükleniyor...'}</span>
-              <span className="profile-code-copy-btn">
+            <div className="profile-code-row">
+              <code className="profile-code-display">{formattedCode}</code>
+              <button 
+                className="btn-copy-code"
+                onClick={handleCopyCode}
+                title="Kodu kopyala"
+                type="button"
+              >
                 {copied ? (
-                  <>
-                    <Check className="w-3.5 h-3.5" style={{ color: '#46d369' }} />
-                    <span style={{ color: '#46d369', fontSize: '0.7rem' }}>Kopyalandı!</span>
-                  </>
+                  <Check className="w-4 h-4" />
                 ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span style={{ fontSize: '0.7rem' }}>Kopyala</span>
-                  </>
+                  <Copy className="w-4 h-4" />
                 )}
-              </span>
+              </button>
             </div>
           </div>
         </div>
