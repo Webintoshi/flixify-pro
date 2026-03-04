@@ -54,14 +54,41 @@ function ProfilePage() {
     }
   }, [user?.expiresAt]);
 
-  const handleCopyCode = async () => {
-    if (!rawCode) return;
+  const handleCopyCode = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!rawCode) {
+      console.warn('Kopyalanacak kod yok');
+      return;
+    }
+    
     try {
-      await navigator.clipboard.writeText(rawCode);
+      // Modern clipboard API
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(rawCode);
+      } else {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = rawCode;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        if (!successful) throw new Error('execCommand failed');
+      }
+      
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error('Kopyalama hatasi:', err);
+      // Fallback: prompt ile göster
+      window.prompt('Kodunuzu kopyalayın:', rawCode);
     }
   };
 
@@ -75,18 +102,27 @@ function ProfilePage() {
           </div>
           <div className="profile-info-compact">
             <span className="profile-name">Profilim</span>
-            <button 
-              className="profile-code-btn"
+            <div 
+              className="profile-code-wrapper"
               onClick={handleCopyCode}
-              title="Hesap kodunu kopyala"
+              title="Kodu kopyalamak için tıklayın"
+              style={{ cursor: 'pointer' }}
             >
-              <span className="profile-code-text">{formattedCode}</span>
-              {copied ? (
-                <Check className="w-3.5 h-3.5 copy-icon copied" />
-              ) : (
-                <Copy className="w-3.5 h-3.5 copy-icon" />
-              )}
-            </button>
+              <span className="profile-code-text">{formattedCode || 'Yükleniyor...'}</span>
+              <span className="profile-code-copy-btn">
+                {copied ? (
+                  <>
+                    <Check className="w-3.5 h-3.5" style={{ color: '#46d369' }} />
+                    <span style={{ color: '#46d369', fontSize: '0.7rem' }}>Kopyalandı!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span style={{ fontSize: '0.7rem' }}>Kopyala</span>
+                  </>
+                )}
+              </span>
+            </div>
           </div>
         </div>
 
