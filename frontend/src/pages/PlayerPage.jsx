@@ -1123,8 +1123,39 @@ function PlayerPage() {
                   </div>
                 </div>
                 
+                {/* Kanal Arama - Kanal Listesi Ustu */}
+                <div className="px-4 py-3 border-b" style={{ borderColor: BORDER, backgroundColor: BG_DARK }}>
+                  <div className="relative group">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 group-focus-within:text-white/60 transition-colors" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Kanal ara..."
+                      className="w-full pl-10 pr-9 py-2.5 rounded-xl text-sm text-white placeholder-white/30 focus:outline-none transition-all"
+                      style={{ 
+                        backgroundColor: BG_SURFACE, 
+                        border: `1px solid ${searchQuery ? PRIMARY : BORDER}`,
+                      }}
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-white/10 transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5 text-white/40" />
+                      </button>
+                    )}
+                  </div>
+                  {searchQuery && (
+                    <p className="text-xs text-white/40 mt-2 ml-1">
+                      {filteredChannels.length} sonuc bulundu
+                    </p>
+                  )}
+                </div>
+
                 {/* Channel Grid */}
-                <div className="overflow-y-auto p-3" style={{ maxHeight: 'calc(100vh - 350px)' }}>
+                <div className="overflow-y-auto p-3" style={{ maxHeight: 'calc(100vh - 420px)' }}>
                   <div className="grid grid-cols-1 gap-2">
                     {displayedChannels.map((ch, index) => {
                       const isLast = index === displayedChannels.length - 1
