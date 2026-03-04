@@ -88,12 +88,15 @@ function ProfilePage() {
           <div className="profile-info-compact">
             <span className="profile-name">Profilim</span>
             <div className="profile-code-inline">
-              <span className="code-text">{formattedCode}</span>
+              <div className="code-container" title={formattedCode}>
+                <span className="code-text">{formattedCode}</span>
+              </div>
               <button 
                 className={`copy-btn ${copied ? 'copied' : ''}`}
                 onClick={handleCopyCode}
                 type="button"
                 disabled={copied}
+                aria-label={copied ? 'Kod kopyalandı' : 'Kodu kopyala'}
               >
                 {copied ? (
                   <>
