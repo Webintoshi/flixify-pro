@@ -16,11 +16,12 @@ import {
   TrendingUp,
   RefreshCw,
   AlertCircle,
-  Calendar
+  Calendar,
+  Tag
 } from 'lucide-react'
 
 const PRIMARY = '#E50914'
-const BG_SURFACE = '#141414'
+const BG_SURFACE = '#0f0f0f'
 const BORDER = '#2a2a2a'
 
 // Paket ikonları
@@ -31,12 +32,56 @@ const PACKAGE_ICONS = {
   12: Crown
 }
 
-// Paket renkleri
-const PACKAGE_COLORS = {
-  1: { bg: '#1a1a2e', accent: '#3b82f6', gradient: 'from-blue-600/20 to-blue-900/10' },
-  3: { bg: '#1a2e1a', accent: '#10b981', gradient: 'from-emerald-600/20 to-emerald-900/10' },
-  6: { bg: '#2e1a1a', accent: '#E50914', gradient: 'from-red-600/20 to-red-900/10' },
-  12: { bg: '#2e2a1a', accent: '#f59e0b', gradient: 'from-amber-600/20 to-amber-900/10' }
+// Premium paket renk temaları - daha sofistike
+const PACKAGE_THEMES = {
+  1: { 
+    gradient: 'from-blue-600/30 via-blue-500/20 to-transparent',
+    accent: '#3b82f6',
+    glow: 'rgba(59, 130, 246, 0.3)',
+    iconBg: 'bg-blue-500/15'
+  },
+  3: { 
+    gradient: 'from-emerald-600/30 via-emerald-500/20 to-transparent',
+    accent: '#10b981',
+    glow: 'rgba(16, 185, 129, 0.3)',
+    iconBg: 'bg-emerald-500/15'
+  },
+  6: { 
+    gradient: 'from-red-600/30 via-rose-500/20 to-transparent',
+    accent: '#f43f5e',
+    glow: 'rgba(244, 63, 94, 0.3)',
+    iconBg: 'bg-rose-500/15'
+  },
+  12: { 
+    gradient: 'from-amber-600/30 via-yellow-500/20 to-transparent',
+    accent: '#f59e0b',
+    glow: 'rgba(245, 158, 11, 0.3)',
+    iconBg: 'bg-amber-500/15'
+  }
+}
+
+// Badge stilleri - modern & lüks
+const BADGE_STYLES = {
+  popular: {
+    gradient: 'from-rose-500 to-pink-600',
+    shadow: 'shadow-rose-500/25',
+    icon: Sparkles
+  },
+  discount: {
+    gradient: 'from-emerald-500 to-teal-600',
+    shadow: 'shadow-emerald-500/25',
+    icon: Tag
+  },
+  best: {
+    gradient: 'from-amber-500 to-orange-600',
+    shadow: 'shadow-amber-500/25',
+    icon: Crown
+  },
+  default: {
+    gradient: 'from-indigo-500 to-purple-600',
+    shadow: 'shadow-indigo-500/25',
+    icon: Package
+  }
 }
 
 function AdminPackages() {
@@ -67,12 +112,10 @@ function AdminPackages() {
   const [featureInput, setFeatureInput] = useState('')
   const [lastUpdated, setLastUpdated] = useState(null)
 
-  // Load packages from API
   useEffect(() => {
     loadPackages()
   }, [])
 
-  // Veritabanı verisini frontend formatına çevir
   const normalizePackage = (pkg) => {
     const durationDays = pkg.duration_days || pkg.duration || 30
     const duration = Math.ceil(durationDays / 30)
@@ -92,13 +135,23 @@ function AdminPackages() {
     }
     
     let badge = pkg.badge || ''
+    let badgeType = 'default'
+    
     if (!badge) {
       if (description.includes('%')) {
         const match = description.match(/%\d+/)
-        if (match) badge = match[0] + ' İndirim'
+        if (match) {
+          badge = match[0] + ' İndirim'
+          badgeType = 'discount'
+        }
       } else if (isPopular) {
         badge = 'Popüler'
+        badgeType = 'popular'
       }
+    } else {
+      if (badge.includes('Popüler')) badgeType = 'popular'
+      else if (badge.includes('%')) badgeType = 'discount'
+      else if (badge.includes('En İyi')) badgeType = 'best'
     }
     
     return {
@@ -110,6 +163,7 @@ function AdminPackages() {
       duration_days: durationDays,
       features: features,
       badge: badge,
+      badgeType: badgeType,
       isPopular: isPopular,
       isActive: pkg.isActive !== false,
       created_at: pkg.created_at,
@@ -200,18 +254,17 @@ function AdminPackages() {
     })
   }
 
-  // Rozet renk belirle
-  const getBadgeStyle = (badge, isPopular) => {
-    if (isPopular || badge?.includes('Popüler')) {
-      return { bg: PRIMARY, text: 'Popüler', icon: Sparkles }
+  // Gün sayısını ay cinsine çevir (12 ay = 365 gün için özel düzeltme)
+  const getPeriodText = (duration, durationDays) => {
+    // 12 aylık paket için özel durum
+    if (duration === 12 || durationDays >= 360) {
+      return { months: 12, days: 365, label: '12 Ay (365 gün)' }
     }
-    if (badge?.includes('En İyi')) {
-      return { bg: '#f59e0b', text: badge, icon: Crown }
+    return { 
+      months: duration, 
+      days: durationDays, 
+      label: `${duration} Ay (${durationDays} gün)` 
     }
-    if (badge?.includes('%')) {
-      return { bg: '#10b981', text: badge, icon: TrendingUp }
-    }
-    return { bg: '#6366f1', text: badge, icon: Package }
   }
 
   if (loading) {
@@ -241,142 +294,154 @@ function AdminPackages() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
+      {/* Header - Premium Stil */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-            <div className="p-2 rounded-xl" style={{ backgroundColor: `${PRIMARY}20` }}>
-              <Package className="w-6 h-6" style={{ color: PRIMARY }} />
+            <div className="p-2.5 rounded-xl bg-gradient-to-br from-red-600/30 to-red-900/20 border border-red-500/20">
+              <Package className="w-6 h-6 text-red-500" />
             </div>
             Paket Yönetimi
-            <span className="text-sm font-medium px-3 py-1 rounded-full bg-white/10 text-gray-400">
+            <span className="text-sm font-medium px-3 py-1.5 rounded-full bg-white/5 text-gray-400 border border-white/10">
               {packages.length} paket
             </span>
           </h1>
-          <p className="text-gray-500 mt-2 flex items-center gap-2">
+          <p className="text-gray-500 mt-3 flex items-center gap-2 text-sm">
             Abonelik paketlerini düzenleyin ve yönetin
             {lastUpdated && (
               <span className="text-xs text-gray-600">
-                • Son güncelleme: {lastUpdated.toLocaleTimeString('tr-TR')}
+                • Son güncelleme: {lastUpdated.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
           </p>
         </div>
         <button 
           onClick={loadPackages}
-          className="px-4 py-2.5 rounded-xl font-medium text-gray-400 hover:text-white flex items-center gap-2 hover:bg-white/5 transition-all border border-white/10"
+          className="px-4 py-2.5 rounded-xl font-medium text-gray-400 hover:text-white flex items-center gap-2 hover:bg-white/5 transition-all border border-white/10 hover:border-white/20"
         >
           <RefreshCw className="w-4 h-4" />
           Yenile
         </button>
       </div>
 
-      {/* Packages Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
-        {packages.map((pkg) => {
-          const badgeStyle = getBadgeStyle(pkg.badge, pkg.isPopular)
+      {/* Packages Grid - Modern Bento Layout */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        {packages.map((pkg, index) => {
+          const badgeStyle = BADGE_STYLES[pkg.badgeType] || BADGE_STYLES.default
           const BadgeIcon = badgeStyle.icon
           const PackageIcon = PACKAGE_ICONS[pkg.duration] || Package
-          const colors = PACKAGE_COLORS[pkg.duration] || PACKAGE_COLORS[1]
+          const theme = PACKAGE_THEMES[pkg.duration] || PACKAGE_THEMES[1]
+          const period = getPeriodText(pkg.duration, pkg.duration_days)
           
           return (
             <div 
               key={pkg.id}
-              className={`group relative rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 ${
-                pkg.isPopular ? 'ring-2 ring-red-500/50' : ''
-              }`}
+              className="group relative flex flex-col rounded-2xl overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:-translate-y-1 h-full"
               style={{ 
-                backgroundColor: colors.bg,
-                border: `1px solid ${pkg.isPopular ? PRIMARY : BORDER}`
+                background: `linear-gradient(180deg, rgba(30,30,30,0.8) 0%, rgba(20,20,20,0.95) 100%)`,
+                border: `1px solid ${pkg.isPopular ? PRIMARY : 'rgba(255,255,255,0.08)'}`,
+                boxShadow: pkg.isPopular ? `0 0 40px ${theme.glow}` : '0 4px 24px rgba(0,0,0,0.3)'
               }}
             >
-              {/* Gradient Overlay */}
-              <div className={`absolute inset-0 bg-gradient-to-br ${colors.gradient} opacity-50`} />
+              {/* Gradient Background Effect */}
+              <div className={`absolute inset-0 bg-gradient-to-br ${theme.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-700`} />
               
-              {/* Badge */}
+              {/* Top Glow Line */}
+              <div 
+                className="absolute top-0 left-0 right-0 h-px opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                style={{ background: `linear-gradient(90deg, transparent, ${theme.accent}, transparent)` }}
+              />
+
+              {/* Badge - Premium Stil */}
               {(pkg.badge || pkg.isPopular) && (
                 <div 
-                  className="relative z-10 px-4 py-2 flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-wider"
-                  style={{ backgroundColor: badgeStyle.bg }}
+                  className={`relative z-10 px-4 py-2.5 flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider bg-gradient-to-r ${badgeStyle.gradient} ${badgeStyle.shadow} shadow-lg`}
                 >
                   <BadgeIcon className="w-3.5 h-3.5" />
-                  {badgeStyle.text}
+                  {pkg.badge}
                 </div>
               )}
 
-              <div className="relative z-10 p-6">
+              {/* Card Content - Flex Column */}
+              <div className="relative z-10 p-6 flex flex-col flex-1">
                 {/* Icon & Name */}
                 <div className="flex items-start gap-4 mb-5">
                   <div 
-                    className="p-3 rounded-xl"
-                    style={{ backgroundColor: `${colors.accent}20`, color: colors.accent }}
+                    className={`p-3 rounded-xl ${theme.iconBg} border border-white/5 transition-transform duration-300 group-hover:scale-110`}
+                    style={{ color: theme.accent }}
                   >
                     <PackageIcon className="w-6 h-6" />
                   </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold text-white leading-tight">{pkg.name}</h3>
-                    <p className="text-gray-500 text-sm mt-1">{pkg.description}</p>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg font-bold text-white leading-tight truncate">{pkg.name}</h3>
+                    <p className="text-gray-500 text-sm mt-1 line-clamp-2">{pkg.description}</p>
                   </div>
                 </div>
 
-                {/* Price */}
+                {/* Price - Enhanced Typography */}
                 <div className="mb-5">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-gray-500 text-lg">₺</span>
-                    <span className="text-4xl font-black text-white tracking-tight">
+                    <span className="text-gray-500 text-xl font-medium">₺</span>
+                    <span className="text-5xl font-black text-white tracking-tighter">
                       {pkg.price.toLocaleString('tr-TR')}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-gray-400 text-sm">
-                      {pkg.duration} Ay
-                    </span>
-                    <span className="text-gray-600">•</span>
-                    <span className="text-gray-500 text-sm">
-                      {pkg.duration_days} gün
+                  <div className="flex items-center gap-2 mt-2">
+                    <span 
+                      className="text-sm font-medium px-2.5 py-0.5 rounded-full"
+                      style={{ backgroundColor: `${theme.accent}15`, color: theme.accent }}
+                    >
+                      {period.label}
                     </span>
                   </div>
                 </div>
 
-                {/* Features */}
-                <div className="space-y-2.5 mb-6">
+                {/* Divider */}
+                <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-5" />
+
+                {/* Features - Flex Grow ile esneyen alan */}
+                <div className="space-y-3 flex-1">
                   {(pkg.features || []).slice(0, 4).map((feature, idx) => (
-                    <div key={idx} className="flex items-center gap-2.5 text-sm">
+                    <div key={idx} className="flex items-center gap-3 text-sm group/item">
                       <div 
-                        className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
-                        style={{ backgroundColor: `${colors.accent}20` }}
+                        className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-transform duration-300 group-hover/item:scale-110"
+                        style={{ backgroundColor: `${theme.accent}15` }}
                       >
-                        <CheckCircle2 className="w-3 h-3" style={{ color: colors.accent }} />
+                        <CheckCircle2 className="w-3 h-3" style={{ color: theme.accent }} />
                       </div>
-                      <span className="text-gray-300">{feature}</span>
+                      <span className="text-gray-300 group-hover/item:text-white transition-colors">{feature}</span>
                     </div>
                   ))}
                 </div>
 
-                {/* Actions */}
-                <div className="flex gap-2">
+                {/* Actions - Her zaman alta sabit */}
+                <div className="flex gap-3 mt-6 pt-2">
                   <button 
                     onClick={() => handleEdit(pkg)}
-                    className="flex-1 py-2.5 px-4 rounded-xl font-medium text-white text-sm flex items-center justify-center gap-2 transition-all hover:brightness-110 active:scale-95"
-                    style={{ backgroundColor: colors.accent }}
+                    className="flex-1 py-2.5 px-4 rounded-xl font-medium text-white text-sm flex items-center justify-center gap-2 transition-all duration-300 hover:shadow-lg active:scale-95"
+                    style={{ 
+                      backgroundColor: theme.accent,
+                      boxShadow: `0 4px 20px ${theme.glow}`
+                    }}
                   >
                     <Edit2 className="w-4 h-4" />
                     Düzenle
                   </button>
                   <button 
                     onClick={() => handleDelete(pkg)}
-                    className="px-3 rounded-xl border border-white/10 text-gray-500 hover:text-red-500 hover:border-red-500/30 hover:bg-red-500/10 transition-all"
+                    className="px-4 rounded-xl border border-white/10 text-gray-500 hover:text-red-400 hover:border-red-500/30 hover:bg-red-500/10 transition-all duration-300 active:scale-95"
+                    title="Paketi Sil"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
 
-              {/* Hover Glow Effect */}
+              {/* Corner Accent */}
               <div 
-                className="absolute -inset-px rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                className="absolute top-0 right-0 w-20 h-20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
                 style={{ 
-                  background: `radial-gradient(circle at 50% 0%, ${colors.accent}10, transparent 60%)`
+                  background: `radial-gradient(circle at 100% 0%, ${theme.accent}10, transparent 70%)`
                 }}
               />
             </div>
@@ -386,23 +451,30 @@ function AdminPackages() {
 
       {/* Empty State */}
       {packages.length === 0 && (
-        <div className="text-center py-16 rounded-2xl border border-dashed border-gray-700">
-          <Package className="w-16 h-16 mx-auto mb-4 text-gray-700" />
-          <p className="text-gray-500 text-lg">Henüz paket bulunmuyor</p>
+        <div className="text-center py-20 rounded-2xl border border-dashed border-gray-700 bg-white/[0.02]">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-white/5 flex items-center justify-center">
+            <Package className="w-10 h-10 text-gray-600" />
+          </div>
+          <p className="text-gray-400 text-lg font-medium">Henüz paket bulunmuyor</p>
+          <p className="text-gray-600 text-sm mt-2">Yeni bir paket eklemek için yukarıdaki butonu kullanın</p>
         </div>
       )}
 
-      {/* Modal */}
+      {/* Modal - Enhanced Design */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
           <div 
             className="w-full max-w-lg rounded-2xl p-6 max-h-[90vh] overflow-y-auto"
-            style={{ backgroundColor: BG_SURFACE, border: `1px solid ${BORDER}` }}
+            style={{ 
+              background: 'linear-gradient(180deg, #1a1a1a 0%, #141414 100%)',
+              border: `1px solid ${BORDER}`,
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+            }}
           >
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl" style={{ backgroundColor: `${PRIMARY}20` }}>
-                  <Package className="w-5 h-5" style={{ color: PRIMARY }} />
+                <div className="p-2.5 rounded-xl bg-gradient-to-br from-red-600/30 to-red-900/20 border border-red-500/20">
+                  <Package className="w-5 h-5 text-red-500" />
                 </div>
                 <h2 className="text-xl font-bold text-white">
                   {editingPackage ? 'Paketi Düzenle' : 'Yeni Paket'}
@@ -410,7 +482,7 @@ function AdminPackages() {
               </div>
               <button 
                 onClick={() => setShowModal(false)}
-                className="p-2 rounded-lg hover:bg-white/10 text-gray-500 hover:text-white transition-colors"
+                className="p-2 rounded-xl hover:bg-white/10 text-gray-500 hover:text-white transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -446,12 +518,12 @@ function AdminPackages() {
                 <div>
                   <label className="block text-sm font-medium text-gray-400 mb-2">Fiyat (₺)</label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">₺</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">₺</span>
                     <input
                       type="number"
                       value={formData.price}
                       onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) || 0 })}
-                      className="w-full pl-8 pr-4 py-3 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] text-white focus:outline-none focus:border-red-600/50 focus:ring-1 focus:ring-red-600/50 transition-all"
+                      className="w-full pl-9 pr-4 py-3 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] text-white focus:outline-none focus:border-red-600/50 focus:ring-1 focus:ring-red-600/50 transition-all"
                     />
                   </div>
                 </div>
@@ -477,13 +549,13 @@ function AdminPackages() {
                   type="text"
                   value={formData.badge}
                   onChange={(e) => setFormData({ ...formData, badge: e.target.value })}
-                  placeholder="Örn: %10 İndirim, Popüler"
+                  placeholder="Örn: %10 İndirim, Popüler, En İyi Fiyat"
                   className="w-full px-4 py-3 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] text-white placeholder-gray-600 focus:outline-none focus:border-red-600/50 focus:ring-1 focus:ring-red-600/50 transition-all"
                 />
               </div>
 
               {/* Toggles */}
-              <div className="flex gap-6">
+              <div className="flex flex-wrap gap-6">
                 <label className="flex items-center gap-3 cursor-pointer group">
                   <div className="relative">
                     <input
@@ -505,7 +577,7 @@ function AdminPackages() {
                       onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:bg-green-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all" />
+                    <div className="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:bg-emerald-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all" />
                   </div>
                   <span className="text-gray-300 group-hover:text-white transition-colors">Aktif</span>
                 </label>
@@ -525,7 +597,7 @@ function AdminPackages() {
                   />
                   <button
                     onClick={addFeature}
-                    className="px-4 py-2.5 rounded-xl font-medium text-white text-sm hover:brightness-110 transition-all"
+                    className="px-5 py-2.5 rounded-xl font-medium text-white text-sm hover:brightness-110 transition-all"
                     style={{ backgroundColor: PRIMARY }}
                   >
                     Ekle
@@ -535,7 +607,7 @@ function AdminPackages() {
                   {formData.features.map((feature, idx) => (
                     <span 
                       key={idx}
-                      className="px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 bg-white/5 text-gray-300 border border-white/10"
+                      className="px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 bg-white/5 text-gray-300 border border-white/10 hover:border-white/20 transition-colors"
                     >
                       {feature}
                       <button 
@@ -551,7 +623,7 @@ function AdminPackages() {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3 mt-8">
+            <div className="flex gap-3 mt-8 pt-4 border-t border-white/5">
               <button 
                 onClick={() => setShowModal(false)}
                 className="flex-1 py-3 rounded-xl font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-all border border-white/10"
