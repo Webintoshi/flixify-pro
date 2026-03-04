@@ -86,31 +86,28 @@ function ProfilePage() {
             <User className="w-8 h-8" />
           </div>
           <div className="profile-info-compact">
-            <span className="profile-name">Profilim</span>
-            <div className="profile-code-inline">
-              <div className="code-container" title={formattedCode}>
-                <span className="code-text">{formattedCode}</span>
-              </div>
-              <button 
-                className={`copy-btn ${copied ? 'copied' : ''}`}
-                onClick={handleCopyCode}
-                type="button"
-                disabled={copied}
-                aria-label={copied ? 'Kod kopyalandı' : 'Kodu kopyala'}
-              >
-                {copied ? (
-                  <>
-                    <Check className="w-3.5 h-3.5" />
-                    <span>Kopyalandı</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Kopyala</span>
-                  </>
-                )}
-              </button>
+            <div className="code-title" title={formattedCode}>
+              <span className="code-title-text">{formattedCode}</span>
             </div>
+            <button 
+              className={`copy-btn copy-btn-full ${copied ? 'copied' : ''}`}
+              onClick={handleCopyCode}
+              type="button"
+              disabled={copied}
+              aria-label={copied ? 'Kod kopyalandı' : 'Kodu kopyala'}
+            >
+              {copied ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>Kopyalandı</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4" />
+                  <span>Kodu Kopyala</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
 
