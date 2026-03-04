@@ -22,34 +22,37 @@
   z-index: 40;
 }
 
-/* Sidebar Header - Premium */
+/* Sidebar Header - Minimal Compact */
 .sidebar-header {
-  padding: 24px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 20px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
   display: flex;
   align-items: center;
-  gap: 16px;
-  background: linear-gradient(180deg, rgba(229,9,20,0.03) 0%, transparent 100%);
+  gap: 12px;
 }
 
 .profile-avatar-large {
-  width: 56px;
-  height: 56px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: linear-gradient(135deg, #e50914 0%, #b20710 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  box-shadow: 
-    0 4px 15px rgba(229, 9, 20, 0.3),
-    0 0 0 1px rgba(255,255,255,0.1) inset;
   flex-shrink: 0;
+}
+
+.profile-avatar-large svg {
+  width: 20px;
+  height: 20px;
 }
 
 .profile-info-compact {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
   min-width: 0;
   flex: 1;
 }
@@ -72,40 +75,34 @@
    PREMIUM PROFILE CODE - Title Edition
    ============================================ */
 
-/* Kod Başlık Stili - Profilim yerine */
+/* Kod Başlık Stili - Minimal Edition */
 .code-title {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 16px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  margin-bottom: 10px;
-  min-width: 0;
-  overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
 }
 
 .code-title:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(229, 9, 20, 0.3);
-  box-shadow: 0 4px 20px rgba(229, 9, 20, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .code-title-text {
   font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Fira Code', monospace;
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: white;
-  letter-spacing: 0.12em;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.1em;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.3;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  line-height: 1;
 }
 
 /* Eski yapı (diğer yerlerde kullanılabilir) */
@@ -173,26 +170,30 @@
   overflow: hidden;
 }
 
-/* Tam Genişlik Buton (Başlık altı) */
+/* Minimal Buton (Başlık altı) */
 .copy-btn-full {
-  width: 100%;
-  padding: 10px 16px;
-  font-size: 0.8125rem;
-  background: linear-gradient(145deg, rgba(229,9,20,0.12) 0%, rgba(229,9,20,0.06) 100%);
-  border-color: rgba(229,9,20,0.25);
-  color: rgba(255,255,255,0.85);
+  width: auto;
+  min-width: 110px;
+  padding: 6px 12px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  background: transparent;
+  border-color: rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.6);
+  border-radius: 6px;
 }
 
 .copy-btn-full:hover:not(:disabled) {
-  background: linear-gradient(145deg, rgba(229,9,20,0.2) 0%, rgba(229,9,20,0.1) 100%);
-  border-color: rgba(229,9,20,0.4);
-  color: white;
-  box-shadow: 0 4px 15px rgba(229, 9, 20, 0.25);
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.25);
+  color: rgba(255,255,255,0.9);
+  box-shadow: none;
 }
 
 .copy-btn-full.copied {
-  background: linear-gradient(145deg, rgba(70, 211, 105, 0.2) 0%, rgba(70, 211, 105, 0.1) 100%);
-  border-color: rgba(70, 211, 105, 0.4);
+  background: rgba(70, 211, 105, 0.1);
+  border-color: rgba(70, 211, 105, 0.3);
+  color: #46d369;
 }
 
 /* Hover Glow Efekti */

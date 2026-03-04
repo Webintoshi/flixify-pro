@@ -98,13 +98,13 @@ function ProfilePage() {
             >
               {copied ? (
                 <>
-                  <Check className="w-4 h-4" />
+                  <Check className="w-3 h-3" />
                   <span>Kopyalandı</span>
                 </>
               ) : (
                 <>
-                  <Copy className="w-4 h-4" />
-                  <span>Kodu Kopyala</span>
+                  <Copy className="w-3 h-3" />
+                  <span>Kopyala</span>
                 </>
               )}
             </button>
