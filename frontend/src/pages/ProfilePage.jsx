@@ -87,18 +87,24 @@ function ProfilePage() {
           </div>
           <div className="profile-info-compact">
             <span className="profile-name">Profilim</span>
-            <div className="profile-code-row">
-              <code className="profile-code-display">{formattedCode}</code>
+            <div className="profile-code-inline">
+              <span className="code-text">{formattedCode}</span>
               <button 
-                className="btn-copy-code"
+                className={`copy-btn ${copied ? 'copied' : ''}`}
                 onClick={handleCopyCode}
-                title="Kodu kopyala"
                 type="button"
+                disabled={copied}
               >
                 {copied ? (
-                  <Check className="w-4 h-4" />
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Kopyalandı</span>
+                  </>
                 ) : (
-                  <Copy className="w-4 h-4" />
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Kopyala</span>
+                  </>
                 )}
               </button>
             </div>

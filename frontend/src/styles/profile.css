@@ -59,48 +59,57 @@
   font-family: monospace;
 }
 
-/* Profile Code Row */
-.profile-code-row {
+/* Profile Code - Single Line */
+.profile-code-inline {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 4px;
+  gap: 10px;
+  margin-top: 6px;
+  min-width: 0;
 }
 
-.profile-code-display {
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', monospace;
-  font-size: 0.8rem;
-  color: rgba(255,255,255,0.6);
-  letter-spacing: 1px;
-  background: transparent;
+.code-text {
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.btn-copy-code {
-  display: flex;
+.copy-btn {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.15);
+  gap: 5px;
+  padding: 5px 10px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
   border-radius: 6px;
   color: rgba(255,255,255,0.5);
+  font-size: 0.7rem;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.btn-copy-code:hover {
-  background: rgba(255,255,255,0.15);
-  border-color: rgba(255,255,255,0.25);
+.copy-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.2);
   color: rgba(255,255,255,0.8);
 }
 
-.btn-copy-code:active {
-  background: rgba(229, 9, 20, 0.2);
-  border-color: rgba(229, 9, 20, 0.4);
-  color: #e50914;
-  transform: scale(0.95);
+.copy-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.copy-btn.copied {
+  background: rgba(70, 211, 105, 0.15);
+  border-color: rgba(70, 211, 105, 0.3);
+  color: #46d369;
+  cursor: default;
 }
 
 /* ============================================
